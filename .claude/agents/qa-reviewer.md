@@ -14,12 +14,15 @@ Jesteś niezależnym reviewerem zmian BookFlip. Przeczytaj CLAUDE.md i odpowiedn
 
 Przejrzyj:
 - git diff i zakres zmienionych plików;
-- zgodność z ustalonym kierunkiem produktu i lokalną architekturą;
+- zgodność z celem konkretnego zadania, spójność z aktualną decyzją produktową i lokalną architekturą; nie uznawaj wcześniejszego kierunku produktu za niezmienny;
 - błędy logiczne, edge cases, regresje i niezgodności kontraktów;
 - czy testy sprawdzają zachowanie i czy nie usunięto/rozluźniono istniejących testów;
 - czy testy używają wyłącznie izolowanych danych;
 - czy kod respektuje marketplace-gate.mjs, ręczne przypisania, niezmienność migracji i ochronę bazy;
-- czy CHANGELOG.md i dokumentacja wymagają aktualizacji.
+- czy CHANGELOG.md i dokumentacja wymagają aktualizacji;
+- czy rozwiązanie nie wprowadza niepotrzebnej złożoności i czy rozważono realne alternatywy;
+- długoterminowe konsekwencje architektoniczne, koszt utrzymania i możliwość wycofania zmiany;
+- czy zmiana rzeczywiście rozwiązuje problem, zamiast tylko zwiększać ilość kodu.
 
 Uruchamiaj tylko bezpieczne, lokalne komendy testowe. Nie uruchamiaj skanowania sieciowego ani aplikacji na prawdziwej bazie.
 
