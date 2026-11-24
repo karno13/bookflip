@@ -1,0 +1,207 @@
+import { json } from '../core/api.js';
+import { escapeHtml } from '../core/formatters.js';
+import { mountBuybackBatch } from './buyback.js';
+
+// Bottom of "Dziś": how much of the collected market data is already identified, how good each
+// source is, and how far each followed series (scan phrase) has been catalogued.
+export function installDashboard({ state, showView }) {
+  const scanner = document.querySelector('#view-today');
+  if (!scanner || document.querySelector('#workflowDashboard')) return () => {};
+  const panel = document.createElement('section');
+  panel.id = 'workflowDashboard';
+  panel.className = 'panel insight-board';
+  panel.setAttribute('aria-label', 'Stan katalogu');
+  panel.innerHTML = '<p class="inline-note">Wczytywanie stanu katalogu…</p>';
+  const fold = document.createElement('details');
+  fold.className = 'insight-fold';
+  fold.id = 'workflowDashboardFold';
+  let open = false;
+  try {
+    open = localStorage.getItem('bookflip.dashboardOpen') === '1';
+  } catch {}
+  fold.open = open;
+  fold.innerHTML = '<summary>Stan katalogu, jakość źródeł i postęp serii</summary>';
+  fold.append(panel);
+  fold.addEventListener('toggle', () => {
+    try {
+      localStorage.setItem('bookflip.dashboardOpen', fold.open ? '1' : '0');
+    } catch {}
+    if (fold.open && stale) void refresh({ force: true });
+  });
+  scanner.append(fold);
+
+  let backfillTimer = null;
+  let backfillWasRunning = false;
+  function backfillMarkup(status) {
+    if (status.state === 'running')
+      return `<span class="inline-note">Uzupełniam zdjęcia: ${status.done}/${status.total} · znaleziono ${status.filled}${status.waitingSources?.length ? ` · ${escapeHtml(status.waitingSources.join(', '))} prosi o wolniejsze tempo, czekam` : ''}</span>${bar(status.total ? (status.done / status.total) * 100 : 0)}<button type="button" class="button secondary compact" data-backfill="cancel">Zatrzymaj</button>`;
+    const summary = status.finishedAt
+      ? `Ostatnio: ${status.filled} nowych zdjęć${status.skippedSources.length ? ' · pominięte (blokada): ' + escapeHtml(status.skippedSources.join(', ')) : ''}`
+      : 'Starsze oferty nie mają zdjęć — pobiorę je z ogłoszeń w tle, w tempie bezpiecznym dla serwisów.';
+    return `<span class="inline-note">${summary}</span><button type="button" class="button secondary compact" data-backfill="start">Uzupełnij zdjęcia</button>`;
+  }
+  async function backfillTick() {
+    clearTimeout(backfillTimer);
+    let status;
+    try {
+      status = await json('/api/images/backfill');
+    } catch {
+      return;
+    }
+    const box = panel.querySelector('#photoBackfill');
+    if (box) box.innerHTML = backfillMarkup(status);
+    const running = status.state === 'running';
+    if (running) backfillTimer = setTimeout(backfillTick, 2000);
+    else if (backfillWasRunning) void refresh({ force: true });
+    backfillWasRunning = running;
+  }
+
+  panel.addEventListener('click', async (event) => {
+    const action = event.target.closest('[data-backfill]');
+    if (action) {
+      action.disabled = true;
+      try {
+        await json('/api/images/backfill' + (action.dataset.backfill === 'cancel' ? '/cancel' : ''), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+      } catch {
+        // The status line below shows the real state either way.
+      }
+      backfillWasRunning = true;
+      void backfillTick();
+      return;
+    }
+    const target = event.target.closest('[data-go]');
+    if (!target) return;
+    showView(target.dataset.go);
+    // A series row jumps to its group in the review queue (grouped by scan phrase).
+    if (target.dataset.query) {
+      const sort = document.querySelector('#reviewSort');
+      if (sort && sort.value !== 'group') {
+        sort.value = 'group';
+        sort.dispatchEvent(new Event('change'));
+      }
+      const wanted = target.dataset.query.toLocaleLowerCase('pl');
+      setTimeout(() => {
+        const header = [...document.querySelectorAll('#reviewList .rv-group span')].find(
+          (node) => node.textContent.toLocaleLowerCase('pl') === wanted,
+        );
+        header?.parentElement?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      }, 600);
+    }
+  });
+
+  const bar = (value, tone = '') =>
+    `<span class="mini-bar${tone ? ' is-' + tone : ''}" data-pct="${Math.max(0, Math.min(100, Math.round(value / 5) * 5))}"><i></i></span>`;
+  const rate = (value) => `${String(value).replace('.', ',')}%`;
+
+  // Why the automatic queue does not move: BN is down. Told plainly, with what the app does about it.
+  const outageReasons = {
+    CERT_HAS_EXPIRED: 'serwer BN ma wygasły certyfikat bezpieczeństwa',
+    CERT_NOT_YET_VALID: 'serwer BN ma nieważny certyfikat',
+    ENOTFOUND: 'brak połączenia z BN (DNS)',
+    EAI_AGAIN: 'brak połączenia z BN (DNS)',
+    ECONNREFUSED: 'serwer BN odrzuca połączenia',
+    ECONNRESET: 'serwer BN zrywa połączenia',
+    ETIMEDOUT: 'serwer BN nie odpowiada',
+  };
+  function outageMarkup(outage) {
+    if (!outage) return '';
+    const reason = outageReasons[outage.reason] || (/^HTTP \d+/.test(outage.reason || '') ? `błąd serwera BN (${outage.reason})` : 'serwer BN nie odpowiada');
+    const next = Date.parse(outage.nextRun) > Date.now() ? new Date(outage.nextRun).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) : null;
+    return `<div class="insight-alert" role="status"><strong>Biblioteka Narodowa niedostępna — ${escapeHtml(reason)}.</strong> ${outage.waiting} ${outage.waiting === 1 ? 'oferta z ISBN czeka' : 'ofert z ISBN czeka'} na rozpoznanie. Aplikacja ponawia coraz rzadziej (najwyżej co godzinę${next ? `, następna próba ok. ${next}` : ''}), korzysta zastępczo z Open Library i ruszy sama, gdy BN odpowie. To problem po stronie BN — nic nie trzeba robić.</div>`;
+  }
+
+  // Start-up asked for it three times (install, opening the scanner, catalogue status); the
+  // insights take ~300 ms of the single server thread each. One request at a time, and not again
+  // within 3 s unless asked explicitly.
+  let inflight = null;
+  let loadedAt = 0;
+  // Folded away it is not computed at all: it is read when the fold opens.
+  let stale = true;
+  function refresh({ force = false } = {}) {
+    if (!fold.open) {
+      stale = true;
+      return Promise.resolve();
+    }
+    stale = false;
+    if (inflight) return inflight;
+    if (!force && Date.now() - loadedAt < 3000) return Promise.resolve();
+    inflight = load().finally(() => {
+      inflight = null;
+      loadedAt = Date.now();
+    });
+    return inflight;
+  }
+  async function load() {
+    let data;
+    try {
+      data = await json('/api/catalog/insights');
+    } catch {
+      panel.innerHTML = '<p class="inline-note">Nie udało się odczytać stanu katalogu. Spróbuję ponownie po odzyskaniu połączenia.</p>';
+      return;
+    }
+    const f = data.funnel;
+    const steps = [
+      ['Zebrane oferty', f.offers, 'offers', 'wszystkie źródła'],
+      ['Z numerem ISBN', f.withIsbn, 'offers', `${rate(f.offers ? Math.round((f.withIsbn / f.offers) * 1000) / 10 : 0)} ofert`],
+      ['W katalogu', f.matched, 'catalog', `${f.manual} zatwierdzonych ręcznie`],
+      ['Oferty wymagające weryfikacji (z referencjami)', f.review, 'review', `${f.queued} w kolejce automatu`],
+    ];
+    const top = Math.max(1, f.offers);
+    panel.innerHTML = `${outageMarkup(data.outage)}
+      <div class="insight-head">
+        <div><p class="section-eyebrow">STAN KATALOGU</p><h3>Od oferty do rozpoznanego wydania</h3></div>
+        <button type="button" class="button primary compact" data-go="review">Weryfikuj (${f.reviewQueue.decisions} do decyzji)</button>
+      </div>
+      <ol class="funnel">${steps
+        .map(
+          ([label, value, view, note], index) =>
+            `<li><button type="button" data-go="${view}" class="funnel-step${index === 3 ? ' is-attention' : ''}"><span class="funnel-label">${label}</span><strong>${value.toLocaleString('pl-PL')}</strong><small>${escapeHtml(note)}</small>${bar((value / top) * 100, index === 3 ? 'warn' : '')}</button></li>`,
+        )
+        .join('')}</ol>
+      <div class="insight-grid">
+        <section>
+          <h4>Serie i frazy</h4>
+          <ul class="series-progress">${
+            data.series.length
+              ? data.series
+                  .map(
+                    (item) =>
+                      `<li><button type="button" data-go="review" data-query="${escapeHtml(item.phrase)}"><span class="series-name">${escapeHtml(item.phrase)}</span><span class="series-meta">${item.matched}/${item.offers} w katalogu${item.review ? ` · <b>${item.review} ofert do weryfikacji</b>` : ''}</span>${bar(item.matchRate)}</button></li>`,
+                  )
+                  .join('')
+              : '<li class="inline-note">Brak fraz — uruchom pierwszy skan.</li>'
+          }</ul>
+        </section>
+        <section>
+          <h4>Jakość źródeł</h4>
+          <table class="source-quality"><thead><tr><th>Źródło</th><th>Oferty</th><th title="Oferty z ISBN">ISBN</th><th title="Przypisane do katalogu">Katalog</th><th title="Oferty ze zdjęciem">Foto</th></tr></thead><tbody>${data.sources
+            .map(
+              (row) =>
+                `<tr><th scope="row"><span class="source-dot" data-source="${escapeHtml(row.source)}"></span>${escapeHtml(row.source)}</th><td>${row.offers}</td><td>${rate(row.isbnRate)}${bar(row.isbnRate)}</td><td>${rate(row.matchRate)}${bar(row.matchRate)}</td><td>${rate(row.imageRate)}${bar(row.imageRate)}</td></tr>`,
+            )
+            .join('')}</tbody></table>
+          <h4>Kompletność wydań</h4>
+          <dl class="completeness">${[
+            ['Rok', data.completeness.year],
+            ['Wydawca', data.completeness.publisher],
+            ['ISBN', data.completeness.isbn],
+            ['Okładka', data.completeness.cover],
+          ]
+            .map(([label, value]) => `<div><dt>${label}</dt><dd>${rate(value)}${bar(value)}</dd></div>`)
+            .join('')}</dl>
+          <p class="inline-note">${data.completeness.works} dzieł · ${data.completeness.editions} wydań</p>
+          ${f.withImage < f.offers ? '<div class="photo-backfill" id="photoBackfill"></div>' : ''}
+          <div id="buybackSlot"></div>
+        </section>
+      </div>`;
+    if (panel.querySelector('#photoBackfill')) void backfillTick();
+    const buybackSlot = panel.querySelector('#buybackSlot');
+    if (buybackSlot) mountBuybackBatch(buybackSlot);
+  }
+  void refresh();
+  return refresh;
+}

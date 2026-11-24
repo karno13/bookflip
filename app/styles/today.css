@@ -1,0 +1,314 @@
+/* Dziś. */
+.today-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.today-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.today-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .today-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+/* The lead: the decisions waiting, the one figure of the view that asks for action. */
+.today-lead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'count label action' 'count note action';
+  align-items: baseline;
+  column-gap: 16px;
+  padding: 18px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.today-lead.is-attention {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+.today-lead:hover {
+  border-color: var(--brand);
+}
+.today-lead strong {
+  grid-area: count;
+  align-self: center;
+  color: var(--brand);
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.today-lead span {
+  grid-area: label;
+  align-self: end;
+  font-size: 20px;
+  font-weight: 650;
+}
+.today-lead small {
+  grid-area: note;
+  align-self: start;
+  color: var(--muted);
+  font-size: 14px;
+}
+.today-lead em {
+  grid-area: action;
+  align-self: center;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-fill);
+  color: var(--on-brand);
+  font-style: normal;
+  font-weight: 650;
+}
+@media (max-width: 900px) {
+  .today-lead {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: 'count label' 'count note' 'action action';
+    row-gap: 4px;
+    padding: 14px 16px;
+  }
+  .today-lead strong {
+    font-size: 40px;
+  }
+  .today-lead span {
+    font-size: 17px;
+  }
+  .today-lead em {
+    margin-top: 8px;
+    text-align: center;
+  }
+}
+.today-tile-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.today-tile.is-attention {
+  border-color: var(--brand);
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+.today-tile.is-warn {
+  border-color: var(--bad);
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+.today-sources h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.today-sources li > button {
+  display: grid;
+  grid-template-columns: 8px minmax(110px, 160px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (max-width: 900px) {
+  .today-sources li > button {
+    grid-template-columns: 8px minmax(0, 1fr);
+  }
+}
+.today-sources li > button:hover {
+  background: var(--hover);
+}
+.today-sources li > button > span {
+  color: var(--muted);
+  font-size: 14px;
+}
+@media (max-width: 900px) {
+  .today-sources li > button > span {
+    grid-column: 2;
+  }
+}
+.today-sources :is(.is-down, .is-never) > button > span {
+  color: var(--text);
+}
+.today-sources :is(.is-down, .is-never) .source-dot-state {
+  background: var(--bad);
+}
+.today-sources .is-unknown .source-dot-state {
+  background: var(--line);
+}
+#view-today > .insight-fold {
+  margin: 0;
+}
+#view-today > .today-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+}
+/* Allegro, OLX: no legal access — a calm fact, not an error. */
+.today-sources-list li.is-no_access {
+  opacity: 0.75;
+}
+.today-sources-list li.is-no_access .source-dot-state {
+  background: var(--muted);
+}
+.today-sources li.is-no_access .source-dot-state {
+  background: var(--muted);
+}
+.today-sources li.is-no_access {
+  opacity: 0.8;
+}
+.today-sources .today-sources-ok > details > summary {
+  min-height: 36px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 600;
+}
+.today-sources .today-sources-ok > details[open] > summary {
+  margin-bottom: 2px;
+}
+/* Dziś: "Plan dnia" cards above the tiles. */
+.today-plan h3 {
+  margin: 0 0 8px;
+}
+.today-plan-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.today-plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.today-plan-card h4 {
+  margin: 0;
+  font-size: 15px;
+}
+.today-plan-count {
+  color: var(--brand);
+  font-variant-numeric: tabular-nums;
+}
+.today-plan-card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+}
+.today-plan-card li {
+  overflow: hidden;
+  padding: 3px 0;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-plan-card li a {
+  display: block;
+  overflow: hidden;
+  color: inherit;
+  text-overflow: ellipsis;
+}
+@media (max-width: 900px) {
+  /* Phone: a line of the plan is a 44 px tap target, the ellipsis stays. */
+  .today-plan-card li {
+    padding: 0;
+  }
+  .today-plan-card li a {
+    padding: 13px 0;
+  }
+  .today-sources .today-sources-ok > details > summary {
+    min-height: 44px;
+  }
+}
+.today-plan-card .button {
+  align-self: flex-start;
+}
+/* Dziś: four measures with a trend, under the tiles. */
+/* One panel: the 1px gaps over the line colour draw the dividers between the measures. */
+.today-measures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--line);
+}
+.today-measure .today-trend {
+  font-weight: 600;
+}
+.today-measure.is-good .today-trend {
+  color: var(--good);
+}
+.today-measure.is-bad .today-trend {
+  color: var(--bad);
+}
+/* „Ostatnie 7 dni”: rozwijana karta pod podsumowaniem. */
+.today-week {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.today-week > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  cursor: pointer;
+}
+.today-week .week-section h4 {
+  margin: 12px 0 4px;
+  font-size: 14px;
+}
+.today-week .week-section ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.today-week .week-change {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.today-week .week-change.is-up {
+  color: var(--good);
+}
+.today-week .week-change.is-down {
+  color: var(--bad);
+}
+.today-week .week-copy {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.today-week .week-text {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  box-sizing: border-box;
+}

@@ -1,0 +1,527 @@
+/* „Łowca”: check a book by ISBN in the field (phone first, one column). */
+.hunter-form {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  max-width: 720px;
+}
+.hunter-form input:not([type='checkbox']):not([type='radio']) {
+  min-height: 48px;
+  font-size: 18px;
+}
+.hunter-form .button {
+  min-height: 48px;
+}
+.hunter-result {
+  margin-top: 16px;
+  max-width: 720px;
+}
+.hunter-card {
+  display: grid;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  padding: 16px;
+}
+.hunter-card h3 {
+  margin: 0;
+}
+.hunter-meta,
+.hunter-hint {
+  margin: 0;
+  color: var(--muted);
+}
+.hunter-fact {
+  margin: 0;
+}
+.hunter-fact span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.hunter-fact b {
+  font-size: 1.4rem;
+}
+.hunter-verdict {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-xs);
+  padding: 14px 16px;
+}
+.hunter-verdict strong {
+  display: block;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+.hunter-verdict small {
+  font-size: 13px;
+}
+.hunter-verdict-icon {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.hunter-verdict.is-good {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.hunter-verdict.is-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.hunter-verdict.is-bad {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.hunter-message {
+  margin: 0;
+  border-radius: var(--radius-xs);
+  padding: 10px 12px;
+}
+.hunter-message.is-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.hunter-message.is-bad {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.hunter-session {
+  margin-top: 24px;
+  max-width: 720px;
+}
+.hunter-session-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hunter-session-head h3 {
+  margin: 0;
+}
+.hunter-session-head .button,
+.hunter-session-actions .button {
+  min-height: 44px;
+  min-width: 44px;
+}
+.hunter-session-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.hunter-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  padding: 10px 12px;
+}
+.hunter-session-row.is-taken {
+  border-color: var(--good);
+  background: var(--good-soft);
+}
+.hunter-session-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+.hunter-session-main strong {
+  overflow-wrap: anywhere;
+}
+.hunter-session-main small {
+  color: var(--muted);
+}
+.hunter-session-actions {
+  display: flex;
+  gap: 8px;
+}
+.hunter-chip {
+  justify-self: start;
+  border-radius: var(--radius-xs);
+  padding: 2px 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.hunter-chip.is-good {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.hunter-chip.is-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.hunter-chip.is-bad {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.hunter-chip.is-neutral {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.hunter-session-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  padding: 12px 16px;
+  z-index: 1;
+}
+/* Aparat: przycisk, tryb ciągły i podgląd z ramką celownika. */
+.hunter-camera {
+  display: grid;
+  gap: 10px;
+  max-width: 820px;
+  margin-bottom: 16px;
+}
+.hunter-camera-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+}
+.hunter-camera-controls .button {
+  min-height: 52px;
+  padding: 0 24px;
+  font-size: 17px;
+}
+.hunter-continuous {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+.hunter-continuous input {
+  width: 22px;
+  height: 22px;
+}
+.hunter-video-wrap {
+  position: relative;
+  overflow: hidden;
+  max-width: 560px;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  background: var(--text);
+}
+.hunter-video-wrap[hidden] {
+  display: none;
+}
+.hunter-video-wrap video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hunter-aim {
+  position: absolute;
+  inset: 34% 10%;
+  border: 3px solid var(--good);
+  border-radius: var(--radius-xs);
+  box-shadow: 0 0 0 999px var(--scrim);
+  pointer-events: none;
+}
+.hunter-strip {
+  margin: 0;
+  max-width: 560px;
+  border-radius: var(--radius-xs);
+  padding: 12px 14px;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.hunter-strip.is-good {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.hunter-strip.is-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.hunter-strip.is-bad {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.hunter-strip.is-neutral {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.hunter-pack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.hunter-pack .button {
+  min-height: 44px;
+}
+.hunter-card.is-outside {
+  border: 2px dashed var(--line-strong);
+}
+.hunter-target.is-met b,
+.hunter-limit b {
+  color: var(--good);
+}
+@media (max-width: 600px) {
+  .hunter-form {
+    grid-template-columns: 1fr;
+  }
+  .hunter-camera-controls .button {
+    width: 100%;
+  }
+}
+@media (max-width: 900px) {
+  /* Phone: the sticky total sits above the fixed bottom navigation, not under it. */
+  .hunter-session-bar {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}
+/* Zapas (podwidok Łowcy): trzy kolumny stanów, na telefonie jedna pod drugą. */
+.stock-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.stock-column h3 {
+  margin: 0 0 8px;
+}
+.stock-column h3 small {
+  color: var(--muted);
+}
+.stock-card {
+  display: grid;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.stock-card small {
+  color: var(--muted);
+}
+.stock-title {
+  padding-left: 0;
+  text-align: left;
+  font-weight: 650;
+}
+.stock-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.stock-aging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.stock-aging small {
+  color: var(--warn);
+  font-weight: 600;
+}
+.stock-dropped {
+  margin-top: 16px;
+}
+.listing-stock {
+  margin-top: 12px;
+}
+@media (max-width: 900px) {
+  .stock-board {
+    grid-template-columns: 1fr;
+  }
+  .stock-aging .deal-triage-button,
+  .stock-actions .deal-triage-button {
+    min-height: 44px;
+    padding: 0 12px;
+  }
+}
+
+/* Zapas → „Co przyniosło towar” */
+.stock-attribution {
+  margin-top: 16px;
+}
+.stock-attribution-scroll {
+  max-height: 320px;
+  overflow: auto;
+}
+.stock-attribution-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.stock-attribution-table th,
+.stock-attribution-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+/* Okazje: znaczniki obserwowanego sprzedawcy i „zwykle odrzucasz” */
+.deal-habit,
+.deal-watched {
+  font-size: 0.85em;
+  color: var(--muted);
+}
+.deal-near {
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+/* Telefon: przyciski obserwowania sprzedawcy i paczek mają co najmniej 44 px */
+@media (max-width: 900px) {
+  .deal-row [data-deal-watch],
+  .bundle-card [data-bundle-watch],
+  .bundle-card [data-bundle-toggle],
+  [data-bundles-dearer] {
+    min-height: 44px;
+    padding: 0 12px;
+  }
+}
+/* Szukanie po tytule: lista wydań do wyboru (dotknięcie sprawdza ISBN). */
+.hunter-search {
+  max-width: 820px;
+  display: grid;
+  gap: 8px;
+}
+.hunter-search:empty {
+  display: none;
+}
+.hunter-picks {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hunter-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hunter-pick:hover {
+  background: var(--hover);
+}
+.hunter-pick-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 240px;
+}
+.hunter-pick-main strong {
+  overflow-wrap: anywhere;
+}
+.hunter-pick-main small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.hunter-pick-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+/* Ściąga na kiermasz: tabela, która dobrze się drukuje. */
+.hunter-cheat {
+  max-width: 820px;
+  margin-top: 20px;
+}
+.hunter-cheat summary {
+  cursor: pointer;
+  font-weight: 650;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.hunter-cheat-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px 16px;
+  margin: 10px 0;
+}
+.hunter-cheat-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.hunter-cheat-table th,
+.hunter-cheat-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.hunter-cheat-table td small {
+  display: block;
+  color: var(--muted);
+}
+.hunter-cheat-limit {
+  white-space: nowrap;
+  font-weight: 700;
+}
+@media print {
+  /* „Drukuj” kopiuje ściągę do #hunterPrintSheet na początku <body>; reszta strony nie zajmuje miejsca. */
+  body.printing-hunter-cheat {
+    background: var(--print-bg);
+  }
+  body.printing-hunter-cheat > :not(#hunterPrintSheet) {
+    display: none !important;
+  }
+  #hunterPrintSheet {
+    color: var(--print-text);
+    background: var(--print-bg);
+  }
+  /* Table and theme rules colour cells for the screen (light text in the dark theme): not on paper. */
+  #hunterPrintSheet * {
+    color: inherit;
+    background: transparent;
+  }
+  #hunterPrintSheet h1 {
+    font-size: 16pt;
+    margin: 0 0 8pt;
+  }
+  #hunterPrintSheet small,
+  #hunterPrintSheet .hunter-hint {
+    color: var(--print-muted);
+  }
+  #hunterPrintSheet th,
+  #hunterPrintSheet td {
+    border-bottom: 1px solid var(--print-line);
+  }
+  #hunterPrintSheet tr {
+    break-inside: avoid;
+  }
+}
+@media screen {
+  #hunterPrintSheet {
+    display: none;
+  }
+}

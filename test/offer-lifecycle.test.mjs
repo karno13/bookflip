@@ -1,0 +1,324 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  checkOfferLifecycle,
+  parseVintedStatus,
+  pendingLifecycleChecks,
+} from '../offer-lifecycle.mjs';
+import { SqliteCatalogRepository } from '../sqlite-catalog-repository.mjs';
+
+// Shapes of the Vinted item-page sidebar plugins (escaped inside the Next.js payload).
+const soldPage = (id) =>
+  `self.__next_f.push([1,"91:[\\"$\\",\\"$L14b\\",null,{\\"plugins\\":[{\\"data\\":{\\"item_id\\":\\"${id}\\",\\"seller_id\\":\\"1\\",\\"theme\\":\\"SUCCESS\\",\\"title\\":\\"Sprzedane\\"},\\"exposures\\":[],\\"name\\":\\"buyer_item_status\\",\\"section\\":\\"sidebar\\"}]}]"])`;
+const livePage = (id, reserved = false) =>
+  `{"data":{"can_buy":true,"instant_buy":true,"is_hidden":false,"is_reserved":${reserved},"item_id":"${id}","reservation":null,"seller_id":"1"},"exposures":[],"name":"ask_seller","section":"sidebar"}` +
+  // A "sold" similar item elsewhere on the page must not count.
+  `{"data":{"item_id":"999","seller_id":"2","theme":"SUCCESS","title":"Sprzedane"},"exposures":[],"name":"buyer_item_status"}`;
+
+test('Vinted item status: sold, reserved, available, or unknown', () => {
+  assert.equal(parseVintedStatus(soldPage('123'), '123'), 'sold');
+  assert.equal(parseVintedStatus(livePage('123'), '123'), 'available');
+  assert.equal(parseVintedStatus(livePage('123', true), '123'), 'reserved');
+  assert.equal(parseVintedStatus(livePage('123'), '999'), 'sold', 'only the matching item counts');
+  assert.equal(parseVintedStatus('<html></html>', '123'), null);
+});
+
+test('offers missing from scans are checked once and their sale is dated', async () => {
+  const repository = new SqliteCatalogRepository(':memory:');
+  try {
+    const old = '2026-10-01T00:00:00.000Z';
+    for (const [id, url] of [
+      ['sold', 'https://www.vinted.pl/items/111-a'],
+      ['gone', 'https://www.vinted.pl/items/222-b'],
+      ['live', 'https://www.vinted.pl/items/333-c'],
+      ['fresh', 'https://www.vinted.pl/items/444-d'],
+    ])
+      repository.upsertOffer({
+        id,
+        source: 'Vinted',
+        normalizedUrl: url,
+        originalTitle: id,
+        currentPrice: 3000,
+        lastSeenAt: id === 'fresh' ? new Date().toISOString() : old,
+        firstSeenAt: old,
+      });
+    const now = () => new Date('2026-11-07T12:00:00.000Z');
+    repository.database.prepare("UPDATE offers SET last_seen_at=? WHERE id<>'fresh'").run(old);
+    repository.database
+      .prepare("UPDATE offers SET last_seen_at=? WHERE id='fresh'")
+      .run('2026-11-07T00:00:00.000Z');
+    assert.deepEqual(
+      pendingLifecycleChecks(repository, { now })
+        .map((row) => row.id)
+        .sort(),
+      ['gone', 'live', 'sold'],
+    );
+    const report = await checkOfferLifecycle(repository, {
+      now,
+      fetchHtml: async (url) => {
+        if (url.includes('222')) throw Object.assign(Error('SOURCE_HTTP_404'), { status: 404 });
+        return url.includes('111')
+          ? soldPage('111')
+          : livePage(url.split('/items/')[1].split('-')[0]);
+      },
+    });
+    assert.equal(report.sold, 1);
+    assert.equal(report.removed, 1);
+    // "fresh" is still listed but never checked on its page: it uses the left-over budget.
+    assert.equal(report.available, 2);
+    const row = (id) =>
+      repository.database
+        .prepare(
+          'SELECT availability, availability_changed_at, current_price FROM offers WHERE id=?',
+        )
+        .get(id);
+    assert.equal(row('sold').availability, 'sold');
+    assert.equal(row('sold').availability_changed_at, '2026-11-07T12:00:00.000Z');
+    assert.equal(row('sold').current_price, 3000, 'last price kept');
+    assert.equal(row('gone').availability, 'unavailable');
+    assert.equal(row('live').availability, 'available');
+    assert.equal(row('fresh').availability, 'available');
+    assert.equal(
+      pendingLifecycleChecks(repository, { now }).length,
+      0,
+      'not rechecked within three days',
+    );
+  } finally {
+    repository.close();
+  }
+});
+
+test('fair order: a cheap never-checked offer goes before an expensive already-checked one', async () => {
+  const repository = new SqliteCatalogRepository(':memory:');
+  try {
+    for (const [id, price] of [
+      ['cheap-new', 500],
+      ['dear-new', 20000],
+      ['dear-checked', 20000],
+    ])
+      repository.upsertOffer({
+        id,
+        source: 'Vinted',
+        normalizedUrl: `https://www.vinted.pl/items/${id.length}${price}-x`,
+        originalTitle: id,
+        currentPrice: price,
+      });
+    repository.database.prepare("UPDATE offers SET last_seen_at='2026-10-01T00:00:00.000Z'").run();
+    repository.database
+      .prepare("UPDATE offers SET availability_checked_at='2026-10-05T00:00:00.000Z' WHERE id=?")
+      .run('dear-checked');
+    const now = () => new Date('2026-11-07T00:00:00.000Z');
+    assert.deepEqual(
+      pendingLifecycleChecks(repository, { now }).map((row) => row.id),
+      ['dear-new', 'cheap-new', 'dear-checked'],
+      'never checked first (price breaks the tie), then the longest unchecked',
+    );
+  } finally {
+    repository.close();
+  }
+});
+
+test('offers of editions that lack sale evidence go first among the due ones, same budget', async () => {
+  const repository = new SqliteCatalogRepository(':memory:');
+  try {
+    repository.createWork({ id: 'w', title: 'Mort', authors: [] });
+    const edition = repository.createEditionForISBN({
+      workId: 'w',
+      isbn: '9788373196032',
+      title: 'Mort',
+    });
+    for (const [id, price] of [
+      ['dear-new', 20000],
+      ['cheap-deal-edition', 500],
+      ['checked-deal-edition', 500],
+      ['live-deal-edition', 500],
+      ['live-other', 20000],
+    ])
+      repository.upsertOffer({
+        id,
+        source: 'Vinted',
+        normalizedUrl: `https://www.vinted.pl/items/${id.length}${price}-x`,
+        originalTitle: id,
+        currentPrice: price,
+      });
+    for (const id of ['cheap-deal-edition', 'checked-deal-edition', 'live-deal-edition'])
+      repository.assignOfferToEdition(id, edition.id, {
+        id: 'm-' + id,
+        method: 'manual',
+        status: 'active',
+      });
+    repository.database
+      .prepare(
+        "UPDATE offers SET last_seen_at='2026-10-01T00:00:00.000Z' WHERE id NOT LIKE 'live-%'",
+      )
+      .run();
+    repository.database
+      .prepare("UPDATE offers SET last_seen_at='2026-11-06T23:00:00.000Z' WHERE id LIKE 'live-%'")
+      .run();
+    repository.database
+      .prepare("UPDATE offers SET availability_checked_at='2026-10-05T00:00:00.000Z' WHERE id=?")
+      .run('checked-deal-edition');
+    const now = () => new Date('2026-11-07T00:00:00.000Z');
+    const priorityEditions = [edition.id];
+    assert.deepEqual(
+      pendingLifecycleChecks(repository, { now, priorityEditions }).map((row) => row.id),
+      ['cheap-deal-edition', 'checked-deal-edition', 'dear-new'],
+      'the edition first (fair order inside it); offers not due yet are still not due',
+    );
+    // Without the list the fair order is unchanged.
+    assert.deepEqual(
+      pendingLifecycleChecks(repository, { now }).map((row) => row.id),
+      ['dear-new', 'cheap-deal-edition', 'checked-deal-edition'],
+    );
+    // Never-checked listed offers: the edition's cheap one before the expensive other one.
+    const pages = [];
+    await checkOfferLifecycle(repository, {
+      now,
+      limit: 4,
+      priorityEditions,
+      fetchHtml: async (url) => (pages.push(url), '<html></html>'),
+    });
+    // One slot left after the three due ones: the edition's listed offer gets it, not the dear one.
+    assert.ok(pages.includes('https://www.vinted.pl/items/17500-x'));
+    assert.ok(!pages.includes('https://www.vinted.pl/items/1020000-x'));
+  } finally {
+    repository.close();
+  }
+});
+
+test('report.backlog is set only when due offers remain after the round', async () => {
+  const repository = new SqliteCatalogRepository(':memory:');
+  try {
+    for (const id of ['1', '2', '3'])
+      repository.upsertOffer({
+        id,
+        source: 'Vinted',
+        normalizedUrl: `https://www.vinted.pl/items/${id}-x`,
+        originalTitle: id,
+      });
+    repository.database.prepare("UPDATE offers SET last_seen_at='2026-10-01T00:00:00.000Z'").run();
+    const options = {
+      now: () => new Date('2026-11-07T00:00:00.000Z'),
+      fetchHtml: async (url) => livePage(url.split('/items/')[1].split('-')[0]),
+    };
+    assert.equal((await checkOfferLifecycle(repository, { ...options, limit: 2 })).backlog, true);
+    assert.equal((await checkOfferLifecycle(repository, { ...options, limit: 2 })).backlog, false);
+  } finally {
+    repository.close();
+  }
+});
+
+test('a blocked source is left alone for the rest of the round', async () => {
+  const repository = new SqliteCatalogRepository(':memory:');
+  try {
+    for (const id of ['1', '2'])
+      repository.upsertOffer({
+        id,
+        source: 'Vinted',
+        normalizedUrl: `https://www.vinted.pl/items/${id}-x`,
+        originalTitle: id,
+      });
+    repository.database.prepare("UPDATE offers SET last_seen_at='2026-10-01T00:00:00.000Z'").run();
+    let calls = 0;
+    const report = await checkOfferLifecycle(repository, {
+      now: () => new Date('2026-11-07T00:00:00.000Z'),
+      fetchHtml: async () => {
+        calls += 1;
+        throw Object.assign(Error('SOURCE_CAPTCHA'), { blocked: true, status: 403 });
+      },
+    });
+    assert.equal(calls, 1);
+    assert.equal(report.stopped, 'SOURCE_CAPTCHA');
+  } finally {
+    repository.close();
+  }
+});
+
+test('only sources with a page parser are checked: not Allegro, OLX or Dedalus', async () => {
+  const repository = new SqliteCatalogRepository(':memory:');
+  try {
+    for (const [id, source] of [
+      ['v', 'Vinted'],
+      ['e', 'Empik'],
+      ['t', 'Tezeusz.pl'],
+      ['a', 'Allegro Lokalnie'],
+      ['x', 'Allegro'],
+      ['o', 'OLX'],
+      ['d', 'Dedalus.pl'],
+    ]) {
+      repository.upsertOffer({
+        id,
+        source,
+        normalizedUrl: `https://example.test/items/123-${id}`,
+        originalTitle: id,
+        currentPrice: source === 'Vinted' ? 1000 : 100000,
+      });
+    }
+    repository.database.exec("UPDATE offers SET last_seen_at='2026-01-01',availability='not_seen'");
+    const calls = [];
+    const report = await checkOfferLifecycle(repository, {
+      now: () => new Date('2026-11-11'),
+      fetchHtml: async (url, source) => {
+        calls.push(source);
+        return livePage('123');
+      },
+    });
+    assert.deepEqual(calls.sort(), ['Allegro Lokalnie', 'Empik', 'Tezeusz.pl', 'Vinted']);
+    assert.equal(report.available, 1);
+    assert.equal(repository.database.prepare('SELECT count(*) n FROM offers').get().n, 7);
+  } finally {
+    repository.close();
+  }
+});
+
+test('an unfamiliar status title and a malformed item id cannot declare removal or sale', () => {
+  const page =
+    '{"data":{"item_id":"123","title":"Sprawdź ponownie"},"exposures":[],"name":"buyer_item_status"}';
+  assert.equal(parseVintedStatus(page, '123'), null);
+  assert.equal(parseVintedStatus(soldPage('123'), '123D'), null);
+});
+
+test('Allegro Lokalnie gets a few page reads per round, the rest waits for a later round', async () => {
+  const repository = new SqliteCatalogRepository(':memory:');
+  try {
+    for (let index = 0; index < 7; index++)
+      repository.upsertOffer({
+        id: 'a' + index,
+        source: 'Allegro Lokalnie',
+        normalizedUrl: `https://allegrolokalnie.pl/oferta/ksiazka-${index}`,
+        originalTitle: 'a' + index,
+        currentPrice: 5000,
+      });
+    repository.upsertOffer({
+      id: 'v',
+      source: 'Vinted',
+      normalizedUrl: 'https://www.vinted.pl/items/123-v',
+      originalTitle: 'v',
+      currentPrice: 5000,
+    });
+    repository.database.exec("UPDATE offers SET last_seen_at='2026-01-01',availability='not_seen'");
+    const calls = [];
+    const round = () =>
+      checkOfferLifecycle(repository, {
+        limit: 20,
+        now: () => new Date('2026-11-11'),
+        fetchHtml: async (url, source) => {
+          calls.push(source);
+          return source === 'Vinted'
+            ? livePage('123')
+            : '<link itemprop="availability" href="https://schema.org/InStock">';
+        },
+      });
+    const report = await round();
+    assert.equal(calls.filter((source) => source === 'Allegro Lokalnie').length, 4);
+    assert.equal(calls.filter((source) => source === 'Vinted').length, 1);
+    assert.equal(report.deferred, 3);
+    // The deferred offers are still due: the next round reads them.
+    calls.length = 0;
+    await round();
+    assert.equal(calls.filter((source) => source === 'Allegro Lokalnie').length, 3);
+  } finally {
+    repository.close();
+  }
+});

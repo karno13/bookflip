@@ -1,0 +1,327 @@
+import { defaultCatalogPath } from './catalog-data-location.mjs';
+import { createSeedService } from './catalog-seeding.mjs';
+import { runStartupJobs } from './startup-jobs.mjs';
+import { ingestScannedOffers } from './offer-ingest.mjs';
+
+import { CatalogResolver } from './catalog-resolver.mjs';
+import { IdentificationWorker } from './identification-worker.mjs';
+import { createBnAdapter } from './metadata-sources/bn.mjs';
+import { createOpenLibraryAdapter } from './metadata-sources/open-library.mjs';
+import { createGoogleBooksAdapter } from './metadata-sources/google-books.mjs';
+import { createEIsbnAdapter } from './metadata-sources/e-isbn.mjs';
+import { SourceRateLimiter, createJsonRequester } from './metadata-http.mjs';
+import { findTitleIsbnCandidates } from './catalog-title-isbn.mjs';
+import { lookupISBN, SqliteMetadataCache } from './metadata-lookup.mjs';
+import { SqliteCatalogRepository } from './sqlite-catalog-repository.mjs';
+import { requeueReviewsWithKnownIsbn } from './identification-retry.mjs';
+
+// Prices are stored in grosze; see offer-ingest.mjs for the plausibility limit.
+export { MAX_PLAUSIBLE_PRICE_GROSZE } from './offer-ingest.mjs';
+
+export function productionCatalogEnabled(environment = process.env) {
+  return !['0', 'false', 'off', 'no'].includes(
+    String(environment.BOOKFLIP_CATALOG_ENABLED ?? '1').toLowerCase(),
+  );
+}
+
+export function createProductionCatalog({
+  databasePath = defaultCatalogPath(),
+  fetcher = globalThis.fetch,
+  contact = process.env.BOOKFLIP_OPEN_LIBRARY_CONTACT ?? 'bookflip-local@localhost',
+  now = () => new Date(),
+  busyTimeout = 10_000,
+} = {}) {
+  const repository = new SqliteCatalogRepository(databasePath, { busyTimeout, now });
+  // Start-up data repairs: most run once (flags in app_preferences); see startup-jobs.mjs.
+  try {
+    runStartupJobs(repository, { now });
+  } catch (error) {
+    console.error('BIBLIOGRAPHY_UPGRADE_FAILED', error?.message ?? error);
+  }
+  const bnLimiter = new SourceRateLimiter({ minIntervalMs: 1_000 });
+  const openLibraryLimiter = new SourceRateLimiter({ minIntervalMs: 1_000 });
+  const bnAdapter = createBnAdapter({
+    fetcher,
+    limiter: bnLimiter,
+    timeoutMs: Number(process.env.BOOKFLIP_METADATA_TIMEOUT_MS ?? 8_000),
+  });
+  // Third source, only with the operator's own key (the anonymous quota is shared and exhausted).
+  const googleBooksAdapter = createGoogleBooksAdapter({
+    apiKey: process.env.BOOKFLIP_GOOGLE_BOOKS_KEY || null,
+    fetcher,
+    limiter: new SourceRateLimiter({ minIntervalMs: 1_000 }),
+    timeoutMs: Number(process.env.BOOKFLIP_METADATA_TIMEOUT_MS ?? 8_000),
+  });
+  // National ISBN registry; BOOKFLIP_E_ISBN=0 turns it off.
+  const eIsbnAdapter = createEIsbnAdapter({
+    fetcher,
+    limiter: new SourceRateLimiter({ minIntervalMs: 1_000 }),
+    timeoutMs: Number(process.env.BOOKFLIP_METADATA_TIMEOUT_MS ?? 8_000),
+    enabled: String(process.env.BOOKFLIP_E_ISBN ?? '1') !== '0',
+  });
+  const openLibraryAdapter = createOpenLibraryAdapter({
+    fetcher,
+    limiter: openLibraryLimiter,
+    timeoutMs: Number(process.env.BOOKFLIP_METADATA_TIMEOUT_MS ?? 8_000),
+    userAgent: `BookFlip/2.0 (catalog resolver; ${contact})`,
+  });
+  const titleBnRequest = createJsonRequester({
+    fetcher,
+    limiter: bnLimiter,
+    timeoutMs: Number(process.env.BOOKFLIP_METADATA_TIMEOUT_MS ?? 8_000),
+    retries: 1,
+  });
+  const titleOlRequest = createJsonRequester({
+    fetcher,
+    limiter: openLibraryLimiter,
+    timeoutMs: Number(process.env.BOOKFLIP_METADATA_TIMEOUT_MS ?? 8_000),
+    retries: 1,
+    headers: { 'User-Agent': `BookFlip/2.0 (title lookup; ${contact})` },
+  });
+  const cache = new SqliteMetadataCache(repository, { now });
+  const resolver = new CatalogResolver({
+    repository,
+    now,
+    lookupMetadata: (isbn) =>
+      lookupISBN(isbn, {
+        bnAdapter,
+        openLibraryAdapter,
+        eIsbnAdapter,
+        googleBooksAdapter,
+        cache,
+      }),
+  });
+  const worker = new IdentificationWorker({
+    repository,
+    resolver,
+    now,
+    leaseMs: Number(process.env.BOOKFLIP_CATALOG_LEASE_MS ?? 60_000),
+    retryDelayMs: Number(process.env.BOOKFLIP_CATALOG_RETRY_MS ?? 300_000),
+  });
+
+  // Catalogue seeding from BN shares the BN rate limiter with ISBN lookups.
+  const seeds = createSeedService(repository, {
+    requestBn: createJsonRequester({
+      fetcher,
+      limiter: bnLimiter,
+      timeoutMs: Number(process.env.BOOKFLIP_METADATA_TIMEOUT_MS ?? 15_000),
+      retries: 1,
+    }),
+    now,
+    log: (...args) => console.error(...args),
+  });
+
+  return {
+    repository,
+    resolver,
+    worker,
+    seeds,
+    findIsbnsByTitle(title) {
+      return findTitleIsbnCandidates(title, {
+        requestBn: titleBnRequest,
+        requestOpenLibrary: titleOlRequest,
+      });
+    },
+    /** Direct asks to the sources that the normal lookup skips once BN / Open Library know the ISBN. */
+    async lookupGapRecords(isbn) {
+      const answers = [];
+      for (const adapter of [eIsbnAdapter, googleBooksAdapter])
+        if (adapter?.enabled) answers.push(await adapter.lookup(isbn));
+      const records = answers.flatMap((answer) =>
+        (answer.records ?? []).map((record) => ({
+          source: answer.source,
+          publisher: record.publisher,
+          publicationYear: record.publicationYear,
+        })),
+      );
+      const failed = answers.every((answer) => answer.status === 'temporary_error');
+      return { error: !records.length && failed, records };
+    },
+    lookupIsbn(isbn) {
+      return lookupISBN(isbn, {
+        bnAdapter,
+        openLibraryAdapter,
+        eIsbnAdapter,
+        googleBooksAdapter,
+        cache,
+      });
+    },
+    resolveIsbn(isbn, { dryRun = false } = {}) {
+      return resolver.resolve({
+        evidence: {
+          status: 'valid',
+          values: [isbn],
+          isbn,
+          candidateIsbn: isbn,
+          classification: 'structured',
+          autoAssignable: true,
+          reviewRequired: false,
+          observations: [],
+        },
+        dryRun,
+      });
+    },
+    /** @param {import('./offer-ingest.mjs').ScannedOffer[]} offers */
+    ingestOffers(offers, observedAt = now(), { scanSummary = null } = {}) {
+      return ingestScannedOffers(repository, offers, observedAt, { scanSummary, now });
+    },
+    async processQueued(limit = Number(process.env.BOOKFLIP_CATALOG_BATCH ?? 25)) {
+      // Offers whose ISBN reached the catalogue since their review (a sibling offer was approved,
+      // the edition was added by hand or by seeding) are matched without another decision.
+      requeueReviewsWithKnownIsbn(repository, now);
+      return worker.processBatch(limit);
+    },
+    beginIdentificationRun(startedAt = new Date().toISOString()) {
+      const db = repository.database;
+      db.exec(`CREATE TEMP TABLE IF NOT EXISTS identification_run_items (
+        job_id TEXT PRIMARY KEY, status TEXT NOT NULL, decision TEXT
+      );
+      CREATE TEMP TRIGGER IF NOT EXISTS identification_run_result
+      AFTER UPDATE OF status ON main.identification_jobs
+      WHEN EXISTS(SELECT 1 FROM identification_run_items WHERE job_id=NEW.id AND status IN ('queued','running','retry_wait'))
+      BEGIN
+        UPDATE identification_run_items SET status=NEW.status,
+          decision=CASE WHEN json_valid(NEW.result_json) THEN COALESCE(json_extract(NEW.result_json,'$.decision'),json_extract(NEW.result_json,'$.manualDecision')) ELSE NULL END
+        WHERE job_id=NEW.id;
+      END;`);
+      db.exec('DELETE FROM temp.identification_run_items');
+      db.prepare(
+        "INSERT INTO temp.identification_run_items(job_id,status) SELECT id,status FROM identification_jobs WHERE status IN ('queued','running','retry_wait')",
+      ).run();
+      this.identificationRunStartedAt = startedAt;
+    },
+    status({ runStartedAt = null } = {}) {
+      const counts = repository.counts();
+      // Offers rejected in review stay saved but are out of every list (catalog-api.mjs): the
+      // top bar and the menu show offers without them, with the rejected ones named separately.
+      counts.offers_rejected = Number(
+        repository.database
+          .prepare(
+            "SELECT count(*) AS count FROM identification_jobs WHERE status='completed' AND json_valid(result_json) AND json_extract(result_json,'$.manualDecision') IN ('excluded','not_book')",
+          )
+          .get().count,
+      );
+      const cache = Number(
+        repository.database.prepare('SELECT count(*) AS count FROM metadata_lookup_cache').get()
+          .count,
+      );
+      const pending = Number(
+        repository.database
+          .prepare("SELECT count(*) AS count FROM identification_jobs WHERE status<>'completed'")
+          .get().count,
+      );
+      const identification = Object.fromEntries(
+        repository.database
+          .prepare('SELECT status, count(*) AS count FROM identification_jobs GROUP BY status')
+          .all()
+          .map((row) => [row.status, Number(row.count)]),
+      );
+      const decisions = Object.fromEntries(
+        repository.database
+          .prepare(
+            "SELECT json_extract(result_json, '$.decision') AS decision, count(*) AS count FROM identification_jobs WHERE status='completed' AND json_valid(result_json) GROUP BY decision",
+          )
+          .all()
+          .filter((row) => row.decision)
+          .map((row) => [row.decision, Number(row.count)]),
+      );
+      const manualDecisions = Object.fromEntries(
+        repository.database
+          .prepare(
+            "SELECT action, count(*) AS count FROM review_decisions WHERE created_by NOT LIKE 'auto\\_isbn%' ESCAPE '\\' GROUP BY action",
+          )
+          .all()
+          .map((row) => [row.action, Number(row.count)]),
+      );
+      const nowIso = new Date().toISOString();
+      const runnable = Number(
+        repository.database
+          .prepare(
+            "SELECT count(*) AS count FROM identification_jobs WHERE (status='queued' OR status='retry_wait') AND (run_after IS NULL OR run_after<=?)",
+          )
+          .get(nowIso).count,
+      );
+      const waiting = Number(
+        repository.database
+          .prepare(
+            "SELECT count(*) AS count FROM identification_jobs WHERE status='retry_wait' AND run_after>?",
+          )
+          .get(nowIso).count,
+      );
+      const failureReasons = repository.database
+        .prepare(
+          "SELECT last_error AS code, count(*) AS count FROM identification_jobs WHERE status='failed' GROUP BY last_error ORDER BY count DESC LIMIT 5",
+        )
+        .all()
+        .map((row) => ({
+          // Never expose arbitrary exception messages in the diagnostics UI.
+          code: /^[A-Z][A-Z0-9_]{1,63}$/.test(String(row.code || '')) ? row.code : 'OTHER_ERROR',
+          count: Number(row.count),
+        }));
+      const reviewReasons = repository.database
+        .prepare(
+          "SELECT je.value AS code, count(*) AS count FROM identification_jobs j, json_each(CASE WHEN json_valid(j.result_json) THEN j.result_json ELSE '{}' END, '$.reason') je WHERE j.status='review_required' AND json_valid(j.result_json) AND je.type='text' GROUP BY je.value ORDER BY count DESC LIMIT 10",
+        )
+        .all()
+        .map((row) => ({
+          code: /^[a-z][a-z0-9_]{1,63}$/.test(String(row.code || '')) ? row.code : 'other_reason',
+          count: Number(row.count),
+        }));
+      let run = null;
+      if (this.identificationRunStartedAt && this.identificationRunStartedAt === runStartedAt) {
+        const runStatuses = Object.fromEntries(
+          repository.database
+            .prepare(
+              'SELECT status,count(*) AS count FROM temp.identification_run_items GROUP BY status',
+            )
+            .all()
+            .map((row) => [row.status, Number(row.count)]),
+        );
+        const runDecisions = Object.fromEntries(
+          repository.database
+            .prepare(
+              'SELECT decision,count(*) AS count FROM temp.identification_run_items WHERE decision IS NOT NULL GROUP BY decision',
+            )
+            .all()
+            .map((row) => [row.decision, Number(row.count)]),
+        );
+        run = {
+          startedAt: runStartedAt,
+          statuses: runStatuses,
+          decisions: runDecisions,
+          assigned:
+            Number(runDecisions.matched_existing || 0) +
+            Number(runDecisions.created_edition || 0) +
+            Number(runDecisions.created_work_and_edition || 0),
+        };
+      }
+      return {
+        enabled: true,
+        counts: { ...counts, identification_pending: pending, metadata_lookup_cache: cache },
+        identification: {
+          statuses: identification,
+          decisions,
+          manualDecisions,
+          runnable,
+          waiting,
+          failureReasons,
+          reviewReasons,
+          assigned: Number(
+            repository.database
+              .prepare(
+                "SELECT count(DISTINCT offer_id) AS count FROM offer_matches WHERE status='active'",
+              )
+              .get().count,
+          ),
+          batch: worker.lastBatch || null,
+          automaticPending: runnable + waiting + Number(identification.running || 0),
+          manualReview: Number(identification.review_required || 0),
+          run,
+        },
+      };
+    },
+    close() {
+      repository.close();
+    },
+  };
+}

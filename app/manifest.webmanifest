@@ -1,0 +1,11 @@
+{
+  "name": "BookFlip",
+  "short_name": "BookFlip",
+  "description": "Skaner, katalog i Łowca książek",
+  "lang": "pl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f5f4",
+  "theme_color": "#0c5c44"
+}

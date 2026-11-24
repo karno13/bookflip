@@ -1,0 +1,685 @@
+import { createHash } from 'node:crypto';
+
+import { extractOfferISBN } from './isbn.mjs';
+import { isbnKeys, normalizeISBN } from './isbn-normalization.mjs';
+import { persistMetadataResults } from './metadata-lookup.mjs';
+
+import { findWorkByKey, mainTitle } from './work-grouping.mjs';
+import { enrichEdition } from './catalog-bibliography.mjs';
+import { createCatalogBundleDetector, looksLikeBundle } from './bundle-detection.mjs';
+import { operatorRejectedEditions } from './offer-assignment.mjs';
+import { titleConflict } from './title-consistency.mjs';
+import { notCatalogueMaterial } from './game-material.mjs';
+import { storeSeriesStatements } from './edition-series.mjs';
+const TRUSTED = new Set(['structured', 'labelled_description']);
+const REVIEW_ONLY = new Set(['unlabelled_description', 'ocr', 'uncertain', 'legacy']);
+
+function stableId(prefix, ...values) {
+  return `${prefix}_${createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 32)}`;
+}
+
+function text(value) {
+  return String(value ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function canonicalEvidence(raw) {
+  if (raw?.values && raw?.status) return raw;
+  if (!Array.isArray(raw)) return null;
+  const observations = raw.map((row) => ({
+    value: String(row.value ?? row.isbn ?? ''),
+    classification: row.classification ?? 'uncertain',
+    valid: Boolean(normalizeISBN(row.value ?? row.isbn)),
+    source: row.source ?? 'metadata_evidence',
+  }));
+  const values = [
+    ...new Set(
+      observations
+        .filter((row) => row.valid)
+        .map(
+          (row) => isbnKeys(row.value).find((key) => key.length === 13) ?? normalizeISBN(row.value),
+        ),
+    ),
+  ];
+  const classifications = observations.filter((row) => row.valid).map((row) => row.classification);
+  const classification = classifications.includes('structured')
+    ? 'structured'
+    : classifications.includes('labelled_description')
+      ? 'labelled_description'
+      : (classifications[0] ?? null);
+  const invalid = observations.some((row) => !row.valid);
+  const status =
+    values.length > 1
+      ? 'conflict'
+      : values.length === 0
+        ? invalid
+          ? 'invalid'
+          : 'missing'
+        : invalid
+          ? 'uncertain'
+          : REVIEW_ONLY.has(classification)
+            ? 'review'
+            : 'valid';
+  return {
+    status,
+    values,
+    candidateIsbn: values.length === 1 ? values[0] : null,
+    isbn: status === 'valid' ? values[0] : null,
+    classification,
+    observations,
+    autoAssignable: status === 'valid' && TRUSTED.has(classification),
+    reviewRequired: ['conflict', 'review', 'uncertain'].includes(status),
+  };
+}
+
+function activeMatch(repository, offerId) {
+  if (!offerId) return null;
+  return (
+    repository.database
+      .prepare(
+        "SELECT * FROM offer_matches WHERE offer_id=? AND status='active' ORDER BY valid_from DESC LIMIT 1",
+      )
+      .get(offerId) ?? null
+  );
+}
+
+function externalEdition(repository, records) {
+  for (const record of records) {
+    const row = repository.database
+      .prepare(
+        `SELECT COALESCE(r.edition_id,l.edition_id) AS edition_id
+      FROM external_records r LEFT JOIN external_record_links l ON l.external_record_id=r.id
+      WHERE r.provider=? AND r.external_id=? AND COALESCE(r.edition_id,l.edition_id) IS NOT NULL
+      ORDER BY r.fetched_at DESC LIMIT 1`,
+      )
+      .get(record.source, record.externalRecordId);
+    if (row?.edition_id)
+      return repository.database.prepare('SELECT * FROM editions WHERE id=?').get(row.edition_id);
+    const scheme =
+      record.source === 'open_library' ? 'open_library' : record.source === 'bn' ? 'bn' : null;
+    const identified = scheme
+      ? repository.database
+          .prepare(
+            'SELECT e.* FROM edition_identifiers i JOIN editions e ON e.id=i.edition_id WHERE i.scheme=? AND i.normalized_value=?',
+          )
+          .get(scheme, record.externalRecordId)
+      : null;
+    if (identified) return identified;
+  }
+  return null;
+}
+
+function externalWork(repository, record) {
+  if (!record?.workExternalId) return null;
+  return (
+    repository.database
+      .prepare(
+        `SELECT w.* FROM external_records r
+    LEFT JOIN external_record_links l ON l.external_record_id=r.id
+    JOIN works w ON w.id=COALESCE(r.work_id,l.work_id)
+    WHERE r.provider=? AND r.external_id=? ORDER BY r.fetched_at DESC LIMIT 1`,
+      )
+      .get(record.source, record.workExternalId) ?? null
+  );
+}
+
+/** BN first; Open Library when BN does not know the ISBN or is unreachable and OL has it. */
+function primarySource(result) {
+  // After BN: Open Library, then the national ISBN registry (e-ISBN), then Google Books.
+  const fallback =
+    [result.openLibrary, result.eIsbn, result.googleBooks].find(
+      (entry) => entry?.status === 'found',
+    ) ?? null;
+  if (result.bn?.status === 'not_found') return fallback ?? result.openLibrary;
+  if (result.bn?.status === 'temporary_error' && fallback) return fallback;
+  return result.bn;
+}
+
+function mergeRecords(result, chosen = null) {
+  const source = primarySource(result);
+  const records = source?.status === 'found' ? (source.records ?? []) : [];
+  if (chosen) return { record: chosen, records: [chosen] };
+  return records.length === 1 ? { record: records[0], records } : null;
+}
+
+/**
+ * One ISBN, several records in the primary source. BN often holds the same book twice (a reprint
+ * catalogued again, a second description). Returns the record to use, or null when they really
+ * describe different books:
+ * - the operator picked a record (recordId) — that one;
+ * - every record has the same main title — the same book: the earliest printing;
+ * - exactly one record agrees with the listing title — that one.
+ */
+export function chooseAmongRecords(records, offerTitle, { recordId = null } = {}) {
+  if (recordId)
+    return records.find((record) => String(record.externalRecordId) === String(recordId)) ?? null;
+  const titles = new Set(records.map((record) => text(mainTitle(record.title))));
+  if (titles.size === 1 && !titles.has(''))
+    return [...records].sort(
+      (a, b) => (Number(a.publicationYear) || 9999) - (Number(b.publicationYear) || 9999),
+    )[0];
+  if (!offerTitle) return null;
+  const agreeing = records.filter(
+    (record) =>
+      !titleConflict(offerTitle, { title: record.title, authors: record.authors }) &&
+      text(offerTitle).includes(text(mainTitle(record.title))),
+  );
+  return agreeing.length === 1 ? agreeing[0] : null;
+}
+
+/** An ISBN typed or chosen by the operator in review is their assertion: no title check. */
+function operatorEvidence(evidence) {
+  return (evidence?.observations ?? []).some((row) =>
+    String(row.source ?? '').startsWith('review:'),
+  );
+}
+
+function allRecords(metadata) {
+  return [metadata?.bn, metadata?.openLibrary, metadata?.eIsbn, metadata?.googleBooks].flatMap(
+    (entry) => (entry?.status === 'found' ? (entry.records ?? []) : []),
+  );
+}
+
+function offerTitleOf(offer) {
+  return offer?.original_title ?? offer?.title ?? '';
+}
+
+function decision(type, reason, evidence, ids = {}, extra = {}) {
+  return {
+    decision: type,
+    reason,
+    evidence,
+    workId: ids.workId ?? null,
+    editionId: ids.editionId ?? null,
+    offerMatchId: ids.offerMatchId ?? null,
+    ...extra,
+  };
+}
+
+export class CatalogResolver {
+  constructor({ repository, lookupMetadata, now = () => new Date() } = {}) {
+    if (!repository || typeof lookupMetadata !== 'function')
+      throw new TypeError('repository and lookupMetadata are required');
+    this.repository = repository;
+    this.lookupMetadata = lookupMetadata;
+    this.now = now;
+    this.bundleDetector = null;
+  }
+
+  /** Words ("zestaw", "tomy 1-3") or two catalogue titles in one listing; the detector is rebuilt each minute. */
+  #looksLikeBundle(title) {
+    if (looksLikeBundle(title)) return true;
+    if (!this.repository.database) return false;
+    const at = Date.now();
+    if (!this.bundleDetector || at - this.bundleDetector.at > 60_000)
+      this.bundleDetector = { at, detect: createCatalogBundleDetector(this.repository) };
+    return this.bundleDetector.detect(title).length >= 2;
+  }
+
+  evidenceForOffer(offer) {
+    const rows = offer?.id
+      ? this.repository.database
+          .prepare(
+            "SELECT value_json,classification,source_type FROM metadata_evidence WHERE offer_id=? AND field_name='isbn' ORDER BY observed_at",
+          )
+          .all(offer.id)
+      : [];
+    if (rows.length)
+      return canonicalEvidence(
+        rows.map((row) => ({
+          value: JSON.parse(row.value_json),
+          classification: row.classification,
+          source: row.source_type,
+        })),
+      );
+    const candidate = { ...offer, isbn: offer?.isbn ?? offer?.observed_isbn };
+    return extractOfferISBN(candidate);
+  }
+
+  async resolve({
+    offerId = null,
+    offer = null,
+    evidence = null,
+    dryRun = false,
+    recordId = null,
+  } = {}) {
+    const storedOffer = offerId
+      ? this.repository.database.prepare('SELECT * FROM offers WHERE id=?').get(offerId)
+      : null;
+    const currentOffer = { ...(storedOffer ?? {}), ...(offer ?? {}) };
+    if (
+      offerId &&
+      this.repository.database
+        .prepare('SELECT offer_id FROM offer_sets WHERE offer_id=?')
+        .get(offerId)
+    )
+      return decision('review_required', ['offer_is_set'], null);
+    const isbnEvidence = canonicalEvidence(evidence) ?? this.evidenceForOffer(currentOffer);
+    const proof = { isbn: isbnEvidence, metadataRecords: [] };
+    const manual = activeMatch(this.repository, offerId);
+    const manualProtected = manual && ['manual', 'legacy_manual'].includes(manual.method);
+    // Game rulebooks and foreign editions never enter the catalogue automatically; an ISBN the
+    // operator typed or chose still does.
+    // The offer's own language (Vinted detail, Empik category) counts as much as its title.
+    const foreignLanguage =
+      currentOffer.language &&
+      !/^(?:pl|pol|polish|polski|język polski)$/i.test(String(currentOffer.language).trim());
+    // A foreign edition with free delivery (Vinted) is let in on purpose: the owner wants to see it.
+    const freeDelivery = (currentOffer.shippingCost ?? currentOffer.shipping_cost) === 0;
+    let material =
+      offerId && !manualProtected && !operatorEvidence(isbnEvidence)
+        ? (notCatalogueMaterial(offerTitleOf(currentOffer)) ??
+          (foreignLanguage ? 'foreign_edition' : null))
+        : null;
+    if (material === 'foreign_edition' && freeDelivery) material = null;
+    if (material) return decision('review_required', [material], proof);
+
+    if (isbnEvidence.status === 'missing')
+      return manualProtected
+        ? decision('matched_existing', ['manual_assignment_preserved'], proof, {
+            editionId: manual.edition_id,
+            offerMatchId: manual.id,
+          })
+        : decision('review_required', ['no_isbn_evidence'], proof);
+    if (isbnEvidence.status === 'invalid')
+      return decision(
+        'review_required',
+        ['invalid_isbn'],
+        proof,
+        manualProtected ? { editionId: manual.edition_id, offerMatchId: manual.id } : {},
+      );
+    if (isbnEvidence.status === 'conflict')
+      return decision(
+        'review_required',
+        ['multiple_conflicting_isbn'],
+        proof,
+        manualProtected ? { editionId: manual.edition_id, offerMatchId: manual.id } : {},
+      );
+    if (!isbnEvidence.autoAssignable || REVIEW_ONLY.has(isbnEvidence.classification))
+      return decision(
+        'review_required',
+        [`isbn_evidence_${isbnEvidence.classification ?? isbnEvidence.status}_requires_review`],
+        proof,
+        manualProtected ? { editionId: manual.edition_id, offerMatchId: manual.id } : {},
+      );
+
+    const isbn = normalizeISBN(isbnEvidence.isbn ?? isbnEvidence.candidateIsbn);
+    // Several books in one listing, one ISBN shown: the operator decides (usually "mark as set").
+    if (
+      offerId &&
+      !manualProtected &&
+      !operatorEvidence(isbnEvidence) &&
+      this.#looksLikeBundle(offerTitleOf(currentOffer))
+    )
+      return decision('review_required', ['possible_bundle'], proof, {}, { candidate: { isbn } });
+    const existing = this.repository.findEditionByISBN(isbn);
+    if (manualProtected && existing && manual.edition_id !== existing.id)
+      return decision('review_required', ['manual_assignment_conflicts_with_isbn'], proof, {
+        editionId: manual.edition_id,
+        offerMatchId: manual.id,
+      });
+    if (manualProtected && !existing)
+      return decision(
+        'review_required',
+        ['manual_assignment_preserved_unverified_candidate'],
+        proof,
+        { editionId: manual.edition_id, offerMatchId: manual.id },
+      );
+    if (existing)
+      return this.#matchExisting(existing, currentOffer, offerId, isbnEvidence, proof, dryRun);
+
+    const metadata = await this.lookupMetadata(isbn);
+    proof.metadataRecords = [
+      metadata.bn,
+      metadata.openLibrary,
+      metadata.eIsbn,
+      metadata.googleBooks,
+    ]
+      .flatMap((entry) => entry?.records ?? [])
+      .map((record) => ({
+        source: record.source,
+        externalRecordId: record.externalRecordId,
+        workExternalId: record.workExternalId,
+        payloadHash: record.payloadHash,
+      }));
+    proof.bnStatus = metadata.bn?.status ?? null;
+    if (metadata.bn?.status === 'temporary_error')
+      proof.bnError =
+        metadata.bn.error?.code ||
+        metadata.bn.error?.message ||
+        (metadata.bn.httpStatus ? `HTTP ${metadata.bn.httpStatus}` : null);
+    const source = primarySource(metadata);
+    if (source?.status === 'temporary_error')
+      return decision('retry_pending', ['metadata_source_temporary_error'], proof);
+    if (source?.status === 'not_found')
+      return decision('not_found', ['isbn_not_found_in_metadata_sources'], proof);
+    if (source?.status !== 'found' || !source.records?.length)
+      return decision('review_required', ['metadata_invalid_or_incomplete'], proof);
+    let chosen = null;
+    if (source.records.length > 1 || recordId) {
+      // A record already linked to a catalogue edition decides at once.
+      const linked = externalEdition(this.repository, source.records);
+      if (linked && !recordId)
+        return this.#matchExisting(linked, currentOffer, offerId, isbnEvidence, proof, dryRun);
+      chosen = chooseAmongRecords(source.records, offerTitleOf(currentOffer), { recordId });
+      if (!chosen)
+        return decision(
+          'review_required',
+          ['multiple_metadata_records'],
+          proof,
+          {},
+          {
+            records: source.records.map((record) => ({
+              id: record.externalRecordId,
+              source: record.source,
+              title: record.title,
+              authors: record.authors,
+              publisher: record.publisher,
+              publicationYear: record.publicationYear,
+            })),
+          },
+        );
+    }
+    const selected = chosen ? mergeRecords(metadata, chosen) : mergeRecords(metadata);
+    const isbnMatches = (record) =>
+      [record.isbn10, record.isbn13]
+        .flatMap((value) => (value ? isbnKeys(value) : []))
+        .some((key) => isbnKeys(isbn).includes(key));
+    if (!isbnMatches(selected.record))
+      return decision('review_required', ['metadata_isbn_mismatch'], proof);
+    const context = { matches: ['isbn'], conflicts: [], sufficient: true };
+
+    const linkedEdition = externalEdition(this.repository, selected.records);
+    if (linkedEdition)
+      return this.#matchExisting(
+        linkedEdition,
+        currentOffer,
+        offerId,
+        isbnEvidence,
+        proof,
+        dryRun,
+        context,
+      );
+    return this.#createCatalog({
+      isbn,
+      metadata,
+      selected,
+      currentOffer,
+      offerId,
+      isbnEvidence,
+      proof,
+      dryRun,
+      context,
+    });
+  }
+
+  #matchExisting(edition, offer, offerId, isbnEvidence, proof, dryRun, precomputed = null) {
+    const context = { matches: ['isbn'], conflicts: [], sufficient: true };
+    const current = activeMatch(this.repository, offerId);
+    if (
+      current &&
+      ['manual', 'legacy_manual'].includes(current.method) &&
+      current.edition_id !== edition.id
+    )
+      return decision('review_required', ['manual_assignment_conflicts_with_candidate'], proof, {
+        workId: edition.work_id,
+        editionId: current.edition_id,
+        offerMatchId: current.id,
+      });
+    if (current?.edition_id === edition.id)
+      return decision(
+        'matched_existing',
+        ['existing_active_assignment'],
+        proof,
+        { workId: edition.work_id, editionId: edition.id, offerMatchId: current.id },
+        { context, dryRun },
+      );
+    // The operator removed this edition from this offer: never put it back automatically.
+    if (
+      offerId &&
+      !operatorEvidence(isbnEvidence) &&
+      operatorRejectedEditions(this.repository, offerId).has(edition.id)
+    )
+      return decision('review_required', ['operator_rejected_edition'], proof, {
+        workId: edition.work_id,
+      });
+    if (offerId && !operatorEvidence(isbnEvidence)) {
+      const work = this.repository.database
+        .prepare('SELECT title, authors_json FROM works WHERE id=?')
+        .get(edition.work_id);
+      if (
+        titleConflict(offerTitleOf(offer), {
+          title: edition.title,
+          workTitle: work?.title,
+          authors: work?.authors_json,
+        })
+      )
+        return decision('review_required', ['isbn_title_mismatch'], proof, {
+          workId: edition.work_id,
+          editionId: edition.id,
+        });
+    }
+    const matchId = offerId ? stableId('resolver_match', offerId, edition.id) : null;
+    let assigned = false;
+    if (!dryRun && offerId)
+      this.repository.transaction(() => {
+        const afterLock = activeMatch(this.repository, offerId);
+        if (
+          afterLock &&
+          ['manual', 'legacy_manual'].includes(afterLock.method) &&
+          afterLock.edition_id !== edition.id
+        )
+          throw new Error('MANUAL_ASSIGNMENT_CONFLICT');
+        if (!afterLock || afterLock.edition_id !== edition.id) {
+          assigned = true;
+          this.repository.assignOfferToEdition(offerId, edition.id, {
+            id: matchId,
+            method: isbnEvidence.classification === 'structured' ? 'structured_isbn' : 'metadata',
+            status: 'active',
+            reason: JSON.stringify({ rule: 'isbn_and_context_match', evidence: proof }),
+            createdBy: 'catalog_resolver',
+            at: this.now(),
+          });
+        }
+      });
+    return decision(
+      'matched_existing',
+      ['isbn_exists_and_context_matches'],
+      proof,
+      { workId: edition.work_id, editionId: edition.id, offerMatchId: matchId },
+      { context, dryRun, ...(assigned ? { assigned: true } : {}) },
+    );
+  }
+
+  #createCatalog({
+    isbn,
+    metadata,
+    selected,
+    currentOffer,
+    offerId,
+    isbnEvidence,
+    proof,
+    dryRun,
+    context,
+  }) {
+    // The listing names a different book than the ISBN record: hold it back before creating
+    // a work that would only exist because of a typo.
+    if (
+      offerId &&
+      !operatorEvidence(isbnEvidence) &&
+      titleConflict(offerTitleOf(currentOffer), {
+        // Any source agreeing with the listing is enough (BN and Open Library may word it differently).
+        title: allRecords(metadata)
+          .map((record) => record.title)
+          .join(' '),
+        authors: allRecords(metadata).flatMap((record) => record.authors ?? []),
+      })
+    )
+      return decision(
+        'review_required',
+        ['isbn_title_mismatch'],
+        proof,
+        {},
+        {
+          candidate: { title: selected.record.title, authors: selected.record.authors, isbn },
+        },
+      );
+    const existingWork = externalWork(
+      this.repository,
+      selected.records.find((record) => record.workExternalId),
+    );
+    // BN has no work identifier: a reprint of a known book (same title and first author) joins
+    // the existing work instead of creating a new one.
+    const sameBook = existingWork
+      ? null
+      : findWorkByKey(
+          this.repository,
+          selected.record.title,
+          selected.record.authors,
+          selected.record.originalTitle,
+        );
+    const reuseWork = existingWork ?? sameBook;
+    const workId =
+      reuseWork?.id ?? stableId('resolver_work', selected.record.workExternalId ?? isbn);
+    const editionId = stableId(
+      'resolver_edition',
+      isbnKeys(isbn).find((key) => key.length === 13) ?? isbn,
+    );
+    const type = reuseWork ? 'created_edition' : 'created_work_and_edition';
+    const workReason = existingWork
+      ? 'external_work_exists'
+      : sameBook
+        ? 'same_title_and_author_work'
+        : null;
+    if (dryRun)
+      return decision(
+        type,
+        [workReason ?? 'no_external_work_match', 'metadata_and_offer_context_match'],
+        proof,
+        {
+          workId,
+          editionId,
+          offerMatchId: offerId ? stableId('resolver_match', offerId, editionId) : null,
+        },
+        {
+          context,
+          dryRun: true,
+          candidate: {
+            title: selected.record.title,
+            authors: selected.record.authors,
+            publisher: selected.record.publisher,
+            publicationYear: selected.record.publicationYear,
+            language: selected.record.language,
+            isbn,
+          },
+        },
+      );
+
+    return this.repository.transaction(() => {
+      const concurrent = this.repository.findEditionByISBN(isbn);
+      if (concurrent)
+        return this.#matchExisting(concurrent, currentOffer, offerId, isbnEvidence, proof, false);
+      const work =
+        reuseWork ??
+        this.repository.createWork({
+          id: workId,
+          title: selected.record.title,
+          normalizedTitle: text(selected.record.title),
+          authors: selected.record.authors,
+          verificationStatus: 'verified',
+          at: this.now(),
+        });
+      const edition = this.repository.createEdition({
+        id: editionId,
+        workId: work.id,
+        title: selected.record.title,
+        publisher: selected.record.publisher,
+        publicationYear: selected.record.publicationYear,
+        language: selected.record.language,
+        binding: selected.record.binding,
+        verificationStatus: 'verified',
+        at: this.now(),
+      });
+      for (const key of isbnKeys(isbn))
+        this.repository.attachIdentifier(edition.id, key.length === 10 ? 'isbn10' : 'isbn13', key, {
+          source: 'catalog_resolver',
+          verificationStatus: 'verified',
+          at: this.now(),
+        });
+      for (const record of selected.records) {
+        const scheme =
+          record.source === 'open_library' ? 'open_library' : record.source === 'bn' ? 'bn' : null;
+        if (scheme)
+          this.repository.attachIdentifier(edition.id, scheme, record.externalRecordId, {
+            source: record.source,
+            verificationStatus: 'verified',
+            at: this.now(),
+          });
+      }
+      persistMetadataResults(
+        this.repository,
+        [metadata.bn, metadata.openLibrary, metadata.eIsbn, metadata.googleBooks].filter(Boolean),
+        {
+          workId: work.id,
+          editionId: edition.id,
+        },
+      );
+      const externalRows = this.repository.database
+        .prepare(
+          `SELECT id,record_type FROM external_records WHERE (provider,external_id) IN (${selected.records.map(() => '(?,?)').join(',')})`,
+        )
+        .all(...selected.records.flatMap((record) => [record.source, record.externalRecordId]));
+      for (const row of externalRows)
+        this.repository.database
+          .prepare(
+            'INSERT OR IGNORE INTO external_record_links(external_record_id,work_id,edition_id,linked_at) VALUES(?,?,?,?)',
+          )
+          .run(row.id, work.id, edition.id, this.now().toISOString());
+      const workRecord = selected.records.find((record) => record.workExternalId);
+      if (workRecord) {
+        const row = this.repository.database
+          .prepare(
+            "SELECT id FROM external_records WHERE provider=? AND external_id=? AND record_type='work' ORDER BY fetched_at DESC LIMIT 1",
+          )
+          .get(workRecord.source, workRecord.workExternalId);
+        if (row)
+          this.repository.database
+            .prepare(
+              'INSERT OR IGNORE INTO external_record_links(external_record_id,work_id,edition_id,linked_at) VALUES(?,?,NULL,?)',
+            )
+            .run(row.id, work.id, this.now().toISOString());
+      }
+      // People, series and physical details from the BN MARC record just stored.
+      enrichEdition(this.repository, edition.id, { now: this.now });
+      // The publisher's own series statement from the national ISBN registry.
+      if (selected.record.source === 'e_isbn' && selected.record.payload?.onix?.series?.length)
+        storeSeriesStatements(
+          this.repository,
+          edition.id,
+          selected.record.payload.onix.series,
+          'e_isbn',
+        );
+      const matchId = offerId ? stableId('resolver_match', offerId, edition.id) : null;
+      if (offerId)
+        this.repository.assignOfferToEdition(offerId, edition.id, {
+          id: matchId,
+          method: isbnEvidence.classification === 'structured' ? 'structured_isbn' : 'metadata',
+          status: 'active',
+          reason: JSON.stringify({ rule: 'verified_metadata_and_context', evidence: proof }),
+          createdBy: 'catalog_resolver',
+          at: this.now(),
+        });
+      return decision(
+        type,
+        [workReason ?? 'new_external_work', 'metadata_and_offer_context_match'],
+        proof,
+        { workId: work.id, editionId: edition.id, offerMatchId: matchId },
+        { context, dryRun: false, ...(offerId ? { assigned: true } : {}) },
+      );
+    });
+  }
+}

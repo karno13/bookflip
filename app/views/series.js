@@ -1,0 +1,141 @@
+// Optional series and volume annotations belong to this browser, not SQLite.
+const KEY = 'bookflip-work-series-v1';
+export function readSeries(storage = globalThis.localStorage) {
+  try {
+    const data = JSON.parse(storage.getItem(KEY) || '{}');
+    return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  } catch { return {}; }
+}
+export function writeSeries(data, storage = globalThis.localStorage) {
+  try { storage.setItem(KEY, JSON.stringify(data)); return true; }
+  catch { return false; }
+}
+// National-library titles carry the series: "Mroczne oblężenie / Siege of darkness, Legenda Drizzta
+// t. 9 Forgotten Realms". This reads "series + volume" out of such a title. It is only a suggestion
+// shown next to the editor; the operator decides whether to apply it.
+export function seriesHintFromTitle(title) {
+  const text = String(title ?? '').replace(/\s+/g, ' ').trim();
+  const afterOriginal = text.includes(' / ') ? text.slice(text.indexOf(' / ') + 3) : '';
+  if (!afterOriginal) return null;
+  // The original title and the series are separated by a comma; without one, the series follows the title.
+  const segment = afterOriginal.includes(',') ? afterOriginal.slice(afterOriginal.indexOf(',') + 1) : afterOriginal;
+  const match = segment.match(/^\s*(.+?)[\s;.,]*\bt\.?\s*(\d{1,3})\b/i);
+  if (!match) return null;
+  const series = match[1].replace(/[\s;:.,-]+$/g, '').trim();
+  const volume = Number(match[2]);
+  if (series.length < 3 || series.length > 120 || volume < 1) return null;
+  return { series, volume };
+}
+export function seriesHintForWork(work) {
+  for (const title of [work?.title, ...(work?.editions || []).map((edition) => edition.title)]) {
+    const hint = seriesHintFromTitle(title);
+    if (hint) return hint;
+  }
+  return null;
+}
+export function seriesSummary(works, annotations) {
+  const groups = new Map();
+  for (const work of works) {
+    const entry = annotations[String(work.id)];
+    if (!entry?.series || !Number.isInteger(entry.volume) || entry.volume < 1) continue;
+    const name = entry.series.trim();
+    if (!name) continue;
+    const key = name.toLocaleLowerCase('pl');
+    if (!groups.has(key)) groups.set(key, { name, volumes: new Set(), books: 0 });
+    const group = groups.get(key);
+    group.volumes.add(entry.volume);
+    group.books++;
+  }
+  return [...groups.values()].map(({name,volumes,books}) => {
+    const ordered = [...volumes].sort((a,b)=>a-b);
+    const missing = [];
+    for (let number = 1; number < ordered[ordered.length-1] && missing.length < 100; number++)
+      if (!volumes.has(number)) missing.push(number);
+    return { name, books, volumes: ordered, missing };
+  }).sort((a,b)=>a.name.localeCompare(b.name,'pl'));
+}
+export function mountSeriesEditor(work, target, onSave = () => {}, options = {}) {
+  const data = options.annotations || readSeries();
+  const current = data[String(work.id)] || {};
+  const block = document.createElement('section');
+  block.className = 'detail-section series-editor';
+  const fold = document.createElement('details');
+  fold.className = 'edit-fold';
+  const heading = document.createElement('summary');
+  const label = document.createElement('span');
+  label.className = 'edit-fold-label';
+  label.textContent = options.save ? 'Seria i tom' : 'Seria i tom (notatka w tej przeglądarce)';
+  const value = document.createElement('b');
+  value.textContent = current.series ? `${current.series}${current.volume ? ', tom ' + current.volume : ''}` : 'brak';
+  const action = document.createElement('span');
+  action.className = 'edit-fold-action';
+  action.textContent = 'Edytuj';
+  heading.append(label, ' ', value, ' ', action);
+  const body = document.createElement('div');
+  body.className = 'edit-fold-body';
+  const series = document.createElement('input');
+  series.placeholder = 'Nazwa serii, np. Horus Heresy';
+  series.maxLength = 120;
+  // Existing series (own and typed earlier) as suggestions: the same name joins the same series.
+  series.setAttribute('list', 'seriesNames');
+  series.setAttribute('aria-label', 'Nazwa serii');
+  series.value = current.series || '';
+  const volume = document.createElement('input');
+  volume.type = 'number';
+  volume.min = '1';
+  volume.max = '10000';
+  volume.step = '1';
+  volume.placeholder = 'Numer tomu (opcjonalnie)';
+  volume.setAttribute('aria-label', 'Numer tomu');
+  volume.value = current.volume ?? '';
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.className = 'button secondary';
+  save.textContent = 'Zapisz serię i tom';
+  const feedback = document.createElement('small');
+  feedback.setAttribute('role','status');
+  save.addEventListener('click', async () => {
+    const name = series.value.trim();
+    const value = volume.value.trim();
+    const number = Number(value);
+    // The volume is optional: a book can be in a series before its number is known.
+    if ((value && (!Number.isInteger(number) || number < 1 || number > 10000)) || (!name && value)) {
+      feedback.textContent = 'Podaj nazwę serii; numer tomu (1–10000) możesz dodać później.';
+      return;
+    }
+    if (options.save) {
+      save.disabled = true;
+      try {
+        const saved = await options.save(String(work.id), { series: name, volume: name && value ? number : null });
+        feedback.textContent = 'Zapisano w SQLite.';
+        onSave(saved);
+      } catch (error) {
+        feedback.textContent = 'Błąd zapisu w SQLite: ' + error.message;
+      } finally { save.disabled = false; }
+      return;
+    }
+    const updated = readSeries();
+    if (!name) delete updated[String(work.id)];
+    else updated[String(work.id)] = { series: name, volume: number };
+    const success = writeSeries(updated);
+    feedback.textContent = success ? 'Zapisano tylko w tej przeglądarce.' : 'Nie udało się zapisać.';
+    if (success) onSave();
+  });
+  const hint = !current.series ? seriesHintForWork(work) : null;
+  if (hint) {
+    const suggestion = document.createElement('button');
+    suggestion.type = 'button';
+    suggestion.className = 'button secondary compact';
+    suggestion.textContent = `Podpowiedź z katalogu: ${hint.series}, tom ${hint.volume} — wstaw`;
+    suggestion.addEventListener('click', () => {
+      series.value = hint.series;
+      volume.value = String(hint.volume);
+      series.dispatchEvent(new Event('input', { bubbles: true }));
+      feedback.textContent = 'Wstawiono podpowiedź. Sprawdź i zapisz.';
+    });
+    body.append(suggestion, series, volume, save, feedback);
+  } else body.append(series, volume, save, feedback);
+  fold.append(heading, body);
+  block.append(fold);
+  target.append(block);
+}

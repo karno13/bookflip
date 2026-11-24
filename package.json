@@ -1,0 +1,31 @@
+{
+  "name": "bookflip-scanner-local",
+  "version": "3.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Local BookFlip scanner and bibliographic SQLite catalog",
+  "engines": {
+    "node": "^22.16.0 || >=24.0.0"
+  },
+  "scripts": {
+    "start": "node local-app.mjs",
+    "test": "node scripts/run-tests.mjs",
+    "backup": "node scripts/backup-catalog.mjs",
+    "bench:scan": "node scripts/benchmark-scan.mjs",
+    "bench:identification": "node scripts/benchmark-identification.mjs",
+    "restore": "node scripts/restore-catalog.mjs",
+    "check:history": "node scripts/check-history-parity.mjs",
+    "rehearse:history": "node scripts/rehearse-history-migration.mjs",
+    "lint": "eslint .",
+    "format:check": "prettier --check \"**/*.{mjs,js,json,css,html}\"",
+    "format": "prettier --write \"**/*.{mjs,js,json,css,html}\"",
+    "typecheck": "tsc -p tsconfig.typecheck.json",
+    "verify": "node scripts/verify.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "eslint": "10.14.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3"
+  }
+}

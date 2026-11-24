@@ -1,0 +1,1077 @@
+/* Oferty: tabela, lista na telefonie, szuflada oferty. */
+.offers-mobile-list {
+  display: block;
+}
+.offers-table-wrap {
+  display: none;
+}
+.offers-panel {
+  padding: 0;
+  border-color: var(--line);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+@media (min-width: 901px) {
+  .offers-panel {
+    max-width: 1400px;
+  }
+}
+.mobile-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 18px;
+  width: 100%;
+  min-height: 74px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  text-align: left;
+  background: var(--surface);
+  color: var(--text);
+  border-bottom-color: var(--line);
+}
+@media (max-width: 600px) {
+  .mobile-offer {
+    grid-template-columns: minmax(0, 1fr) 90px;
+    gap: 10px;
+    padding: 14px 12px;
+  }
+}
+.mobile-offer:first-child {
+  border-radius: 12px 12px 0 0;
+}
+.mobile-offer:hover {
+  background: var(--surface-2);
+}
+.mobile-offer-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.mobile-offer-copy strong {
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.mobile-offer-copy small {
+  color: var(--muted);
+}
+@media (max-width: 600px) {
+  .mobile-offer-copy small {
+    font-size: 11px;
+  }
+}
+.mobile-offer-price {
+  display: grid;
+  text-align: right;
+  gap: 3px;
+}
+.mobile-offer-price b {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 600px) {
+  .mobile-offer-price b {
+    font-size: 15px;
+  }
+}
+.mobile-offer-price small {
+  font-size: 11px;
+  color: var(--muted);
+}
+@media (max-width: 600px) {
+  .mobile-offer-price small {
+    font-size: 10px;
+  }
+}
+.price-list {
+  display: grid;
+  gap: 8px;
+}
+.price-list a {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  border-bottom-color: var(--line);
+}
+.price-list > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  border-bottom-color: var(--line);
+}
+.price-list button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  border-bottom-color: var(--line);
+}
+.price-list > span > small {
+  display: inline;
+}
+.price-history-disclosure .price-list {
+  max-height: 320px;
+  overflow: auto;
+}
+#offerDrawer[hidden] {
+  display: none;
+}
+#offerDrawer .drawer-close {
+  z-index: 2;
+  position: static;
+  min-height: 44px;
+  background: var(--surface);
+}
+#offerDrawer .detail-actions {
+  position: static;
+  padding: 12px 0;
+  background: var(--surface);
+}
+#view-offers {
+  position: relative;
+}
+@media (max-width: 600px) {
+  #offerDrawer h2 {
+    font-size: 20px;
+  }
+}
+.observation-list {
+  display: grid;
+}
+.observation-row time {
+  font-size: 13px;
+}
+@media (min-width: 901px) {
+  .observation-row time {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .observation-row small {
+    max-width: 560px;
+  }
+}
+/* Z obszaru „Książki”, po regułach tego pliku (kaskada). */
+.book-options button {
+  background: var(--surface);
+  color: var(--text);
+}
+.observation-row:hover {
+  background: var(--surface-2);
+}
+/* Z obszaru „Książki”, po regułach tego pliku (kaskada). */
+.series-progress button {
+  display: grid;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  grid-template-columns: minmax(0, 1fr);
+}
+/* Z obszaru „Komponenty”, po regułach tego pliku (kaskada). */
+.segmented button {
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+/* UX review 7.8: phone — settings in the bar, one-line catalogue switch, 44 px touch targets. */
+@media (max-width: 900px) {
+  .segmented button {
+    min-height: 44px;
+  }
+}
+.offer-card.mobile-offer:hover {
+  background: var(--zebra);
+}
+.offer-match {
+  color: var(--brand) !important;
+  font-weight: 600;
+}
+.offer-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.offer-cell > span:last-child {
+  min-width: 0;
+}
+.drawer-photo {
+  max-width: 92px;
+  margin: 8px 0;
+}
+body.density-compact .offer-card.mobile-offer {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+body.density-compact .offer-card .cover-sm {
+  width: 30px;
+}
+/* Z obszaru „Książki”, po regułach tego pliku (kaskada). */
+body.density-compact .work-row .cover-md {
+  width: 40px;
+}
+:root .offer-card.mobile-offer:hover {
+  background: var(--zebra);
+}
+/* Z obszaru „Książki”, po regułach tego pliku (kaskada). */
+
+.offer-assignment {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0;
+}
+.offer-assignment-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.offer-assignment-results {
+  display: grid;
+  gap: 4px;
+  max-height: 280px;
+  overflow: auto;
+}
+.offer-assignment-option:hover:not(:disabled) {
+  background: var(--green-soft);
+}
+.offer-assignment-option:disabled {
+  opacity: 0.55;
+}
+.drawer-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+}
+.offer-gone {
+  color: var(--warn-text);
+  font-weight: 650;
+}
+/* Oferty → "Wg książki": one card per edition. */
+#view-offers .filterbar .segmented {
+  flex: none;
+}
+/* Z obszaru „Kolejka”, po regułach tego pliku (kaskada). */
+.rv-record-note a {
+  color: var(--green);
+}
+/* Z obszaru „Książki”, po regułach tego pliku (kaskada). */
+.wp-table .wp-conditions th[scope='rowgroup'] {
+  text-align: left;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  padding-top: 14px;
+}
+/* Z obszaru „Kolejka”, po regułach tego pliku (kaskada). */
+.identification-dashboard.is-idle > .identification-more > summary {
+  min-height: 32px;
+  padding: 4px 0;
+  color: var(--muted);
+}
+@media (max-width: 900px) {
+  #reviewDetail .lean-review-secondary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+.review-toolbar > details[open] > div,
+.review-toolbar .shortcut-help[open] > p {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: min(650px, 100%);
+  max-height: 300px;
+  overflow: auto;
+  z-index: 12;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+/* UX review 4: table on desktop, cards on phones. */
+@media (min-width: 901px) {
+  #view-offers .offers-table-wrap {
+    display: block;
+  }
+  #view-offers #offersMobileList {
+    display: none;
+  }
+  #view-offers .offers-panel {
+    max-width: none;
+  }
+  .offers-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+  .offers-table th:first-child {
+    width: 32%;
+  }
+  .offers-table th:nth-child(2) {
+    width: 11%;
+  }
+  .offers-table th:nth-child(3) {
+    width: 9%;
+  }
+  .offers-table th:nth-child(4) {
+    width: 13%;
+  }
+  .offers-table th:nth-child(5) {
+    width: 14%;
+  }
+  .offers-table th:nth-child(6) {
+    width: 12%;
+  }
+  .offers-table th:last-child {
+    width: 9%;
+  }
+  .offers-table .offer-subtitle {
+    display: none;
+  }
+  .offer-sort-header {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    padding: 0;
+    min-height: 32px;
+    text-align: left;
+  }
+  .offers-table tr[data-open-offer] {
+    cursor: pointer;
+  }
+  .offers-table tr[data-open-offer]:hover {
+    background: var(--hover);
+  }
+  #view-offers > .filterbar {
+    flex-wrap: nowrap;
+  }
+  #view-offers > .filterbar > select {
+    flex: 0 1 170px;
+  }
+}
+/* Z obszaru „Kolejka”, po regułach tego pliku (kaskada). */
+/* UX review 6.3: direct access to sets and touch-sized external links. */
+.rv-head-side > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.offers-table .status-pill.neutral {
+  padding: 0;
+  background: transparent;
+  font-weight: 400;
+}
+/* UX review 7.4: one state column; prices line up on the right. */
+@media (min-width: 901px) {
+  .offers-table .offer-price-cell {
+    text-align: right;
+    padding-right: 20px;
+    font-variant-numeric: tabular-nums;
+  }
+  .offers-table th.offer-price-cell .offer-sort-header {
+    width: 100%;
+    text-align: right;
+  }
+}
+.offers-table .status-pill.warning {
+  padding: 1px 8px;
+}
+/* UX review 7.7: drawer facts sit next to their labels; an empty sales tile does not shout. */
+#offerDrawerContent .detail-grid > span {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  justify-content: start;
+}
+@media (max-width: 900px) {
+  #offerDrawerContent .detail-grid > span {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+}
+#offerDrawerContent .detail-grid > span > small {
+  text-align: left;
+  color: var(--text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+/* Review 11.2026, stage 0.7: green means "act" — offer titles use the text colour (row and title stay
+   clickable, underlined on hover); the everyday "Wymaga decyzji" state is quiet. */
+#offersTableBody .offer-title {
+  color: var(--text);
+  font-weight: 600;
+  text-align: left;
+}
+#offersTableBody tr:hover .offer-title,
+#offersTableBody .offer-title:hover,
+#offersTableBody .offer-title:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Z obszaru „Komponenty”, po regułach tego pliku (kaskada). */
+.filter-chip button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+#offersTableBody .offer-book {
+  min-height: 0;
+  padding: 0;
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+}
+#offersTableBody .offer-book:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* „Okazje” (deals.mjs): offers clearly below the value of their edition */
+.sniper-panel {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.sniper-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+.sniper-head h3 {
+  margin: 0;
+  font-size: 17px;
+}
+.sniper-head .sniper-every {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.sniper-panel > .inline-note {
+  margin: 6px 0 0;
+}
+.inflow-scroll {
+  margin-top: 8px;
+  overflow-x: auto;
+}
+.inflow-grid {
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.inflow-grid th {
+  padding: 2px 4px;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+}
+.inflow-grid td {
+  min-width: 26px;
+  padding: 4px 2px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: var(--muted);
+  text-align: center;
+}
+.inflow-grid td.inflow-fast {
+  background: var(--brand-soft);
+  color: var(--good);
+  font-weight: 700;
+}
+.inflow-grid td.inflow-slow {
+  background: var(--surface-3);
+}
+.targets-panel > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.targets-list {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.target-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.target-item.is-off {
+  color: var(--muted);
+}
+.target-item span {
+  display: grid;
+  min-width: 0;
+}
+.target-item small {
+  color: var(--muted);
+}
+.target-item .button {
+  min-height: 44px;
+}
+.bundle-card {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.bundle-card h4,
+.bundle-card p {
+  margin: 0;
+}
+.bundle-summary {
+  color: var(--muted);
+}
+.bundle-offers {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bundle-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  min-height: 44px;
+}
+.bundle-offer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.bundle-offer small {
+  color: var(--muted);
+}
+.bundle-card .button {
+  justify-self: start;
+  min-height: 44px;
+}
+.sniper-alerts {
+  display: grid;
+  gap: 2px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sniper-alert {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'badge title numbers' 'badge meta numbers';
+  align-items: baseline;
+  column-gap: 10px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+}
+.sniper-alert.is-new {
+  background: var(--brand-soft);
+}
+.sniper-alert.is-gone {
+  opacity: 0.6;
+}
+.sniper-alert > .sniper-new {
+  grid-area: badge;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--brand-fill);
+  color: var(--on-brand);
+  font-size: 12px;
+  font-weight: 650;
+}
+.sniper-alert > .link-button {
+  min-height: 0;
+  padding: 0;
+  grid-area: title;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-weight: 600;
+}
+.sniper-alert > small {
+  grid-area: meta;
+  color: var(--muted);
+}
+.sniper-alert-numbers {
+  grid-area: numbers;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.sniper-alert-numbers strong {
+  color: var(--good);
+  font-size: 1.1rem;
+}
+.sniper-gone {
+  color: var(--warn);
+}
+.market-search {
+  flex: 1 1 260px;
+}
+.backtest-panel > div {
+  overflow-x: auto;
+}
+.backtest-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+.backtest-table th,
+.backtest-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.market-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.market-open {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.market-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.market-copy small {
+  color: var(--muted);
+}
+.market-title {
+  font-family: var(--font-book);
+  font-weight: 600;
+}
+.market-numbers {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  white-space: nowrap;
+}
+.market-numbers strong {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+}
+.market-numbers small {
+  color: var(--muted);
+}
+.market-turnover {
+  color: var(--good);
+  font-weight: 650;
+}
+.market-more {
+  margin: 12px auto;
+  display: block;
+}
+/* Something new for the owner in „Okazje”: a dot on its navigation icon. */
+.has-news .nav-glyph,
+.has-news .mobile-nav-icon {
+  position: relative;
+}
+.has-news .nav-glyph::after,
+.has-news .mobile-nav-icon::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--side-bg);
+  border-radius: 50%;
+  background: var(--pulse);
+}
+.deals-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.deals-note,
+.deals-verdicts {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+}
+.deals-verdicts:empty {
+  display: none;
+}
+/* Phone: the filter chips are one row that scrolls sideways instead of a tall column. */
+@media (max-width: 900px) {
+  .deals-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .deals-toolbar > * {
+    flex: none;
+    white-space: nowrap;
+  }
+  .deals-toolbar > .search-field {
+    flex: 1 0 220px;
+  }
+}
+/* Indeks rynku has a select and a long chip: they wrap instead of running off the right edge. */
+@media (max-width: 900px) {
+  #marketPane > .deals-toolbar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+  #marketPane > .deals-toolbar > .search-field {
+    flex: 1 1 100%;
+  }
+  #marketPane > .deals-toolbar .check-row {
+    white-space: normal;
+  }
+}
+.deals-toolbar .deals-sort {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.deals-toolbar .state-badge {
+  margin-left: auto;
+}
+.deals-list {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.deal-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  align-items: start;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  transition: background-color 0.15s;
+}
+.deal-row:hover {
+  background: var(--hover);
+}
+/* Actions under the deal: „Kupiłem” first and filled, the rest quiet, the rating at the far end. */
+.deal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  grid-column: 1 / -1;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.deal-actions > * {
+  margin: 0;
+}
+.deal-actions .deal-bought {
+  order: -1;
+}
+.deal-actions .deal-bought .deal-triage-button {
+  background: var(--brand-fill);
+  border-color: var(--brand-fill);
+  color: var(--on-brand);
+  font-weight: 650;
+}
+.deal-actions .deal-bought .deal-triage-button:hover {
+  background: var(--brand-fill-hover);
+}
+.deal-actions .deal-verdict {
+  margin-left: auto;
+}
+.deal-row:last-child {
+  border-bottom: 0;
+}
+.deal-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.deal-copy small {
+  color: var(--muted);
+}
+.deal-copy small .link-button {
+  font-weight: 400;
+}
+@media (max-width: 900px) {
+  .deal-copy small a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+.deal-demand.is-high {
+  color: var(--good);
+  font-weight: 600;
+}
+.deal-title {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  text-align: left;
+  font-weight: 650;
+  font-size: 15px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.deal-copy .deal-warning {
+  color: var(--warn);
+}
+.deal-numbers {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  text-align: right;
+  white-space: nowrap;
+}
+.deal-numbers b {
+  color: var(--text);
+}
+.deal-numbers span,
+.deal-numbers small {
+  color: var(--muted);
+}
+/* The saving is what the row is about: the largest figure, the price follows it. */
+.deal-saving {
+  color: var(--good);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.deal-numbers .deal-expected {
+  color: var(--text);
+  font-weight: 600;
+}
+.deal-numbers .deal-price-drop {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 650;
+}
+.deal-copy .deal-liquidity.is-fast {
+  color: var(--good);
+  font-weight: 600;
+}
+.deal-copy .deal-liquidity.is-slow {
+  color: var(--warn);
+}
+.deal-row.is-suspicious .deal-saving {
+  color: var(--warn);
+}
+.deal-verdict,
+.deal-triage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+/* Rating is secondary to the deal itself: quiet chips, full contrast on hover and focus. */
+.deal-verdict-chip,
+.deal-triage-button {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.deal-verdict-chip:hover,
+.deal-verdict-chip:focus-visible,
+.deal-triage-button:hover,
+.deal-triage-button:focus-visible {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+.deal-triage-flag {
+  margin-top: 4px;
+}
+.deal-returned {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 650;
+}
+.deals-list > .inline-note {
+  margin: 14px;
+}
+.deal-review {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.deal-review:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.deal-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.deal-review-head .state-badge {
+  margin-left: auto;
+}
+.deal-review-head .review-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.review-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.review-copy {
+  display: grid;
+  gap: 4px;
+}
+.review-title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.review-copy p {
+  margin: 0;
+}
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.review-action {
+  min-height: 36px;
+  padding: 0 12px;
+}
+.review-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.review-action kbd {
+  font-weight: 650;
+}
+.review-hint {
+  margin: 0;
+}
+@media (max-width: 900px) {
+  /* On a phone the deals come first; the rule of the list is a static note the desktop shows. */
+  .deals-note {
+    display: none;
+  }
+  .deal-verdict-chip,
+  .deal-triage-button {
+    min-height: 44px;
+    padding: 0 12px;
+  }
+  .deal-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .sniper-alert {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: 'badge title' 'badge meta' 'badge numbers';
+  }
+  .sniper-alert-numbers {
+    white-space: normal;
+  }
+  .market-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .backtest-table th,
+  .backtest-table td {
+    padding: 6px 5px;
+  }
+  .market-numbers {
+    justify-items: start;
+  }
+  .deal-numbers {
+    grid-column: 1 / -1;
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-items: start;
+    align-items: baseline;
+    gap: 4px 12px;
+    white-space: normal;
+    text-align: left;
+  }
+}

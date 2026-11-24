@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang=pl>
+<head>
+  <meta charset=utf-8>
+  <meta name=viewport content=width=device-width,initial-scale=1>
+  <link rel=icon href=data:,>
+  <title>BookFlip — skaner i katalog książek</title>
+  <link rel=manifest href=/manifest.webmanifest>
+  <link rel=stylesheet href=/styles/tokens.css>
+  <link rel=stylesheet href=/styles/base.css>
+  <link rel=stylesheet href=/styles/shell.css>
+  <link rel=stylesheet href=/styles/components.css>
+  <link rel=stylesheet href=/styles/today.css>
+  <link rel=stylesheet href=/styles/queue.css>
+  <link rel=stylesheet href=/styles/catalog.css>
+  <link rel=stylesheet href=/styles/offers.css>
+  <link rel=stylesheet href=/styles/sets.css>
+  <link rel=stylesheet href=/styles/sources.css>
+  <link rel=stylesheet href=/styles/settings.css>
+  <link rel=stylesheet href=/styles/hunter.css>
+  <link rel=stylesheet href=/styles/phrases.css>
+  <link rel=stylesheet href=/styles/trading.css>
+  <link rel=stylesheet href=/styles/design.css>
+</head>
+<body>
+  <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0">
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/></symbol>
+    <symbol id="i-today" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><path d="M8.5 14.5l2.2 2 4.8-4.5"/></symbol>
+    <symbol id="i-queue" viewBox="0 0 24 24"><path d="M9 11.5l2.2 2.2L15.5 9"/><circle cx="12" cy="12" r="9"/></symbol>
+    <symbol id="i-books" viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/><path d="M9 7.5h6"/></symbol>
+    <symbol id="i-offers" viewBox="0 0 24 24"><path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8a1 1 0 0 1 0 1.4l-6.6 6.6a1 1 0 0 1-1.4 0z"/><circle cx="8" cy="8" r="1.3"/></symbol>
+    <symbol id="i-deals" viewBox="0 0 24 24"><path d="M18.5 5.5l-13 13"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></symbol>
+    <symbol id="i-hunter" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></symbol>
+    <symbol id="i-phrases" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></symbol>
+    <symbol id="i-sources"viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 14a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V20a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H4a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H20a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  </svg>
+  <a class="skip-link" href="#mainContent">Przejdź do treści</a>
+  <div class=app-shell>
+    <aside class=sidebar>
+      <div class=brand><span class="brand-mark" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-book"/></svg></span><span class="brand-word">BookFlip <small>3.2</small></span></div><p class="sidebar-caption">Skanowanie, katalog, weryfikacja</p><div class="sidebar-collection"><span class="sidebar-collection-icon" aria-hidden="true">✦</span><span><b>Katalog rynku książek</b><small>Stanowisko badawcze</small></span></div>
+      <nav class="nav-list" aria-label="Główna nawigacja">
+        <button class="nav-item active" type="button" data-view="today" title="Dziś"><span class="nav-glyph" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-today"/></svg></span><span class="nav-label">Dziś</span><small>Zmiany od ostatniej wizyty</small></button>
+        <button class="nav-item" type="button" data-view="deals" title="Okazje"><span class="nav-glyph" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-deals"/></svg></span><span class="nav-label">Okazje</span><small id="dealsNavCount">Poniżej wyceny</small></button>
+        <button class="nav-item" type="button" data-view="hunter" title="Łowca"><span class="nav-glyph" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-hunter"/></svg></span><span class="nav-label">Łowca</span><small>Sprawdź książkę po ISBN lub tytule</small></button>
+        <button class="nav-item" type="button" data-view="queue" title="Kolejka"><span class="nav-glyph" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-queue"/></svg></span><span class="nav-label">Kolejka</span><small id="reviewNavCount">0 do decyzji</small></button>
+        <button class="nav-item" type="button" data-view="catalog" title="Książki"><span class="nav-glyph" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-books"/></svg></span><span class="nav-label">Książki</span><small id="offersNavCount">0 zapisanych</small></button>
+        <button class="nav-item" type="button" data-view="scanner" title="Skan"><span class="nav-glyph" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-sources"/></svg></span><span class="nav-label">Skan</span><small>Źródła i frazy</small></button>
+      </nav>
+      <nav class="nav-list nav-secondary" aria-label="Ustawienia">
+        <button class="nav-item" type="button" data-view="settings" title="Ustawienia"><span class="nav-glyph" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-settings"/></svg></span><span class="nav-label">Ustawienia</span><small>Interfejs, reguły, kopie</small></button>
+      </nav>
+      <div class="sidebar-footer"><span class="connection-dot" id="connectionDot"></span><div><strong id="connectionLabel">Łączenie...</strong><small>127.0.0.1</small></div></div>
+    </aside>
+    <div class=app-frame>
+      <header class="topbar">
+        <div><p class="topbar-kicker">BOOKFLIP <span class="topbar-divider">/</span> KATALOG RYNKU KSIĄŻEK</p><div class="view-title-line"><h1 id="viewTitle">Dziś</h1><span id="viewSummary" aria-live="polite"></span></div></div>
+        <div class="entity-search"><input id="entitySearch" type="search" autocomplete="off" placeholder="Szukaj autora, serii, sprzedawcy (/)" aria-label="Szukaj autora, serii lub sprzedawcy" aria-controls="entityResults"><div id="entityResults" class="entity-results" hidden aria-live="polite"></div></div>
+      </header>
+      <main class=workspace id="mainContent">
+        <section class="view active" id="view-today" data-title="Dziś">
+          <div class="view-heading today-heading"><div><p class="section-eyebrow">Co wymaga uwagi</p><h2>Dziś</h2></div><span class="state-badge neutral" id="todaySince" role="status">Wczytywanie…</span><button class="button primary" type="button" id="todayReview">Weryfikacja</button><button class="button secondary" type="button" id="todayScan">Nowy skan</button></div>
+          <div id="todayBody" class="today-body" aria-live="polite"><p class="inline-note">Wczytywanie podsumowania…</p></div>
+          <details class="today-week" id="todayWeek"><summary>Ostatnie 7 dni</summary><div id="todayWeekBody" class="today-week-body"><p class="inline-note">Wczytywanie…</p></div></details>
+        </section>
+        <section class="view" id="view-deals" data-title="Okazje" hidden>
+          <div class="view-heading"><div><p class="section-eyebrow">Oferty poniżej wyceny</p><h2>Okazje</h2><p>Dostępne oferty co najmniej 20% i 5 zł poniżej wartości swojego wydania. Wartość liczona z pozostałych ofert i sprzedaży tego wydania, dla stanu danego egzemplarza.</p></div></div>
+          <section class="sniper-panel" id="sniperPanel" data-pane="sniper" hidden aria-labelledby="sniperTitle"><div class="sniper-head"><h3 id="sniperTitle">Snajper</h3><label class="check-row"><input type="checkbox" id="sniperEnabled"> <span>Włączony</span></label><label class="field sniper-every"><span>Co</span><select id="sniperEvery"><option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option><option value="60">60 min</option></select></label><label class="check-row"><input type="checkbox" id="sniperAdaptive"> <span>Dopasuj do godzin napływu</span></label></div><p class="inline-note" id="sniperStatus" role="status">Wczytywanie…</p><p class="inline-note sniper-explain">Skanuje najnowsze ogłoszenia Vinted dla książek z najlepszym obrotem (zakładka Rynek) i daje znać, gdy pojawi się okazja — zanim ktoś ją kupi.</p><div id="sniperInflow" hidden><p class="inline-note" id="sniperInflowNote" role="status"></p><div class="inflow-scroll" id="sniperInflowGrid" tabindex="0" role="region" aria-label="Odstępy snajpera według godzin tygodnia" hidden></div></div><div class="sniper-push"><p class="inline-note" id="pushState" role="status"></p><button class="button" type="button" id="pushToggle" aria-pressed="false" hidden>Włącz powiadomienia na tym urządzeniu</button><button class="button" type="button" id="pushTest" hidden>Wyślij próbne</button></div><ul class="sniper-alerts" id="sniperAlerts" aria-live="polite"></ul></section>
+          <details class="sniper-panel targets-panel" id="targetsPanel" data-pane="targets" hidden open><summary id="targetsSummary">Moje ceny docelowe</summary><div id="targetsBody"><p class="inline-note">Wczytywanie…</p></div></details>
+          <details class="sniper-panel targets-panel" id="bundlesPanel" data-pane="bundles" hidden open><summary id="bundlesSummary">Paczki sprzedawców</summary><div id="bundlesBody"><p class="inline-note">Wczytywanie…</p></div></details>
+          <div id="dealsPane" data-pane="deals">
+          <div class="deals-toolbar"><label class="check-row"><input type="checkbox" id="dealsIncludeLow"> <span>Pokaż też wyceny o niskiej wiarygodności</span></label><label class="check-row"><input type="checkbox" id="dealsShowRated"> <span>Pokaż ocenione</span></label><label class="check-row"><input type="checkbox" id="dealsOnlyWatched"> <span>Tylko od obserwowanych sprzedawców</span></label><label class="check-row"><input type="checkbox" id="dealsShowNear"> <span>Prawie okazje (po zwykłej obniżce)</span></label><label class="check-row"><input type="checkbox" id="dealsOnlyCheapest"> <span>Tylko najtańsze w wydaniu</span></label><label class="check-row"><input type="checkbox" id="dealsHideHabit"> <span>Ukryj zwykle odrzucane</span></label><label class="check-row"><input type="checkbox" id="dealsShowHidden"> <span>Pokaż ukryte (odłożone, obejrzane, odrzucone)</span></label><label class="field deals-sort"><span>Sortuj</span><select id="dealsSort"><option value="expected">Oczekiwany zysk</option><option value="saving">Największa różnica w zł</option><option value="discount">Największy rabat %</option><option value="newest">Najnowsze oferty</option><option value="price">Najniższa cena</option><option value="demand">Największy popyt</option></select></label><button type="button" class="button secondary compact" id="dealsReviewStart" title="Okazje jedna po drugiej, klawisze K, L, O, N, Z">Przegląd</button><span class="state-badge neutral" id="dealsCount" role="status">Wczytywanie…</span></div>
+          <section class="deal-review" id="dealReview" tabindex="-1" hidden aria-labelledby="dealReviewHeading"><div class="deal-review-head"><h3 id="dealReviewHeading">Przegląd okazji</h3><span class="state-badge neutral" id="dealReviewCounter">0 z 0</span><label class="field review-label"><span>Etykieta</span><select id="dealReviewLabel"><option value="">Wybierz etykietę…</option></select></label><button type="button" class="button ghost compact" id="dealReviewClose" aria-keyshortcuts="Escape">Zamknij (Esc)</button></div><div id="dealReviewCard"></div><div class="review-actions" id="dealReviewActions" role="group" aria-label="Akcje przeglądu"></div><p class="inline-note review-hint">Klawisze: <kbd>K</kbd> kupiłem · <kbd>L</kbd> do etykiety · <kbd>O</kbd> odłóż · <kbd>N</kbd> nie · <kbd>S</kbd> pomiń · <kbd>Z</kbd> cofnij · <kbd>Esc</kbd> zamknij. Na telefonie użyj przycisków.</p><p class="sr-only" id="dealReviewLive" role="status" aria-live="polite"></p></section>
+          <p class="inline-note deals-note">Dostępne oferty co najmniej 20% i 5 zł poniżej wartości swojego wydania. Wartość liczona z pozostałych ofert i sprzedaży tego samego wydania, dla stanu danego egzemplarza — bez kosztów wysyłki i opłat.</p>
+          <p class="inline-note deals-verdicts" id="dealsTriage" role="status"></p>
+          <p class="inline-note deals-verdicts" id="dealsVerdicts" role="status"></p>
+          <div id="dealsList" class="deals-list"><p class="inline-note">Wczytywanie okazji…</p></div>
+          </div>
+          <div id="marketPane" data-pane="market" hidden>
+            <div class="deals-toolbar"><label class="search-field market-search"><span class="sr-only">Szukaj w indeksie</span><input id="marketSearch" type="search" placeholder="Szukaj: tytuł, autor"></label><label class="field deals-sort"><span>Sortuj</span><select id="marketSort"><option value="turnover">Obrót (wartość × szansa)</option><option value="liquidity">Najszybciej schodzi</option><option value="value">Najwyższa wartość</option><option value="supply">Najwięcej w sprzedaży</option></select></label><label class="check-row"><input type="checkbox" id="marketReliable" checked> <span>Tylko wiarygodne wyceny</span></label></div>
+            <p class="inline-note" id="marketSummary" role="status"></p>
+            <section class="market-map" id="marketMap" aria-label="Mapa rynku" hidden></section>
+            <details class="sniper-panel backtest-panel" id="lifetimePanel"><summary>Okno przewagi</summary><div id="lifetimeBody"><p class="inline-note">Wczytywanie…</p></div></details>
+            <details class="sniper-panel backtest-panel" id="backtestPanel"><summary>Jak trafne są wyceny</summary><div id="backtestBody"><p class="inline-note">Wczytywanie…</p></div></details>
+            <div id="marketList" class="deals-list market-list"><p class="inline-note">Wczytywanie rynku…</p></div>
+          </div>
+        </section>
+        <section class="view" id="view-phrases" data-title="Frazy" hidden>
+          <div class="view-heading"><div><p class="section-eyebrow">Frazy skanu</p><h2>Frazy</h2><p>Co przynosi każda fraza w ostatnich <span id="phrasesDays">14</span> dniach. Szumiącą frazę możesz wyłączyć i włączyć z powrotem. Wyłączona fraza nie jest skanowana w pełnym i szybkim skanie ani przez snajpera; skan wpisany ręcznie zawsze robi dokładnie to, co wpisano.</p></div></div>
+          <div class="phrases-bar">
+            <p class="phrases-summary" id="phrasesSummary" role="status"></p>
+            <div class="segmented" id="phrasesFilter" role="group" aria-label="Pokaż frazy"><button type="button" data-phrase-filter="all" aria-pressed="true">Wszystkie</button><button type="button" data-phrase-filter="noise" aria-pressed="false">Tylko szum</button><button type="button" data-phrase-filter="disabled" aria-pressed="false">Wyłączone</button></div>
+          </div>
+          <div class="phrases-list" id="phrasesList"></div>
+        </section>
+        <section class="view" id="view-hunter" data-title="Łowca" hidden>
+          <div class="view-heading"><div><p class="section-eyebrow">Sprawdź książkę w terenie</p><h2>Łowca</h2><p>Zeskanuj aparatem kod kreskowy książki ze sklepu lub kiermaszu albo wpisz ISBN, tytuł lub autora (i cenę z półki), a zobaczysz wycenę, szansę sprzedaży, „opłaca się do” i werdykt. Dane z katalogu i zapisanych ofert, bez kosztów wysyłki i opłat.</p></div></div>
+          <div class="hunter-camera">
+            <div class="hunter-camera-controls"><button class="button primary" type="button" id="hunterCameraToggle" aria-pressed="false" aria-controls="hunterVideoWrap">Skanuj aparatem</button><label class="hunter-continuous"><input type="checkbox" id="hunterContinuous" checked> Skanuj ciągle (całe pudło książek)</label></div>
+            <p class="hunter-hint" id="hunterCameraHint" role="status" hidden></p>
+            <div class="hunter-video-wrap" id="hunterVideoWrap" hidden><video id="hunterVideo" playsinline muted aria-label="Podgląd aparatu"></video><span class="hunter-aim" aria-hidden="true"></span></div>
+            <div id="hunterScanStrip" aria-live="polite"></div>
+            <div class="hunter-pack"><p class="hunter-hint" id="hunterPackStatus" role="status"></p><button class="button" type="button" id="hunterPackRefresh">Pobierz dane do pracy bez sieci</button></div>
+          </div>
+          <form class="hunter-form" id="hunterForm" autocomplete="off" aria-labelledby="hunterFormTitle"><h3 class="hunter-form-title" id="hunterFormTitle">Sprawdź książkę w terenie</h3>
+            <label class="field"><span>ISBN, tytuł lub autor</span><input id="hunterIsbn" type="text" enterkeyhint="search" autofocus placeholder="978… albo np. smoki jesieni" aria-describedby="hunterResult"></label>
+            <label class="field"><span>Cena na półce (zł)</span><input id="hunterPrice" type="text" inputmode="decimal" placeholder="np. 15,00"></label>
+            <button class="button primary" type="submit">Sprawdź</button>
+          </form>
+          <div class="hunter-search" id="hunterSearch" aria-live="polite"></div>
+          <div class="hunter-result" id="hunterResult" aria-live="polite"></div>
+          <details class="hunter-cheat" id="hunterCheat"><summary>Ściąga na kiermasz: czego wypatrywać na półce</summary>
+            <p class="hunter-hint">Książki z katalogu z pewną wyceną albo Twoim celem „Kupuję do”, z ceną, do której warto brać (<span id="hunterCheatShare">75</span>% wyceny albo Twój cel). Działa też bez sieci; „Drukuj” daje kartkę do kieszeni.</p>
+            <div class="hunter-cheat-controls"><label class="field"><span>Kolejność</span><select id="hunterCheatSort"><option value="value">Najcenniejsze najpierw</option><option value="author">Po autorze (jak na półce)</option></select></label><label class="field"><span>Zawęź (np. warhammer, pratchett)</span><input id="hunterCheatQuery" type="search" placeholder="tytuł, autor, wydawca"></label><button class="button" type="button" id="hunterCheatPrint">Drukuj</button></div>
+            <div id="hunterCheatList"></div>
+          </details>
+          <section class="hunter-session" id="hunterSession" aria-label="Sesja w sklepie" hidden>
+            <div class="hunter-session-head"><h3>Sesja w sklepie</h3><button class="button" type="button" id="hunterSessionReset">Nowa sesja</button></div>
+            <ul class="hunter-session-list" id="hunterSessionList"></ul>
+            <div class="hunter-session-bar" id="hunterSessionBar" role="status" aria-live="polite"></div>
+          </section>
+        </section>
+        <section class="view" id="view-stock" data-title="Zapas" hidden>
+          <div class="view-heading"><div><p class="section-eyebrow">Łowca</p><h2>Zapas</h2><p>Twoje sztuki: kupione, wystawione, sprzedane. Tylko stany i daty, bez kwot. Przyciski przesuwają sztukę o jeden krok, a „Cofnij” cofa ostatnią zmianę.</p></div></div>
+          <p class="inline-note" id="stockSummary" role="status"></p>
+          <div id="stockBoard" aria-live="polite"><p class="inline-note">Wczytywanie…</p></div>
+        </section>
+        <section class="view" id="view-scanner" data-title="Źródła" hidden>
+          <section class="today-sources sources-status" id="sourcesStatus" aria-label="Stan źródeł"><p class="inline-note">Wczytywanie stanu źródeł…</p></section>
+          <div class="view-heading scanner-heading"><div><h2>Nowy skan</h2><p>Tytuły, autorzy, serie albo ISBN — w wybranych serwisach.</p></div><span class="state-badge neutral" id="scanStateBadge" role="status" aria-live="polite">Gotowy</span></div>
+          <div class="desktop-scanner-grid"><div class="panel scanner-form-panel">
+            <div class="profile-chips" id="profileChips" aria-label="Zapisane profile" hidden></div>
+            <div class="query-freshness profile-coverage" id="profileCoverage" role="status" hidden></div>
+            <label class="field scanner-series"><span class="scanner-label">Szukaj po etykiecie</span><select id="scanSeries" aria-describedby="scanSeriesNote"><option value="">Wybierz etykietę…</option></select></label>
+            <p class="form-note" id="scanSeriesNote" role="status">Wybór etykiety zastąpi frazy poniżej listą tytułów jej książek (tytuł i autor). Następnie kliknij Skanuj.</p>
+            <label class="field grow scanner-queries"><span class="scanner-label">Frazy <small>jedna w wierszu, do 200</small></span><textarea id="queries" rows="4" placeholder="Diuna&#10;Frank Herbert&#10;9788382028521" required></textarea></label>
+            <p class="query-freshness" id="queryFreshness" hidden></p>
+            <div class="source-header"><span class="scanner-label">Źródła</span><button class="link-button" id="toggleSources" type="button">Zaznacz wszystkie</button></div>
+            <div class="source-grid" id="sourceGrid"><span class="loading-copy">Wczytywanie źródeł…</span></div><p class="source-dead-note" id="sourceDeadNote" hidden></p>
+            <label class="toggle-chip scan-language-toggle" title="Wydania obcojęzyczne (tytuł, język w ogłoszeniu, kategoria Empiku) są odrzucane od razu, zamiast czekać w „Gry / obce”. Każdą taką decyzję można cofnąć w weryfikacji."><input type="checkbox" id="scanPolishOnly" checked><span>Tylko polskie wydania</span></label>
+            <div class="form-actions"><div class="scan-footer-copy"><p class="scan-plan" id="scanPlan" aria-live="polite"></p><span class="form-note" id="scanGuardMessage"></span></div><button class="button secondary compact" id="cancelSearch" type="button" hidden>Anuluj skan</button><button class="button primary scan-cta" id="startSearch" type="button">Skanuj</button></div>
+          </div>
+          </div><section class="panel scan-run" id="scanRun" hidden aria-labelledby="scanRunTitle">
+            <div class="scan-run-head"><div><h3 id="scanRunTitle">Przebieg skanu</h3><small id="scanRunMeta"></small></div><span id="progressElapsed" class="scan-run-elapsed"></span></div>
+            <div class="progress-track" id="progressTrack" data-indeterminate="false"><i id="progressBar"></i></div>
+            <p class="scan-run-current" aria-live="polite"><strong id="progressMessage"></strong> <small id="progressDetail"></small></p>
+            <div class="scan-run-totals" id="scanRunTotals"></div>
+            <div class="table-wrap"><table class="scan-run-table"><thead><tr><th>Źródło</th><th>Zapytania</th><th>Oferty</th><th>Nowe</th><th>Stan</th></tr></thead><tbody id="scanRunSources"></tbody></table></div>
+            <div class="scan-run-advice" id="scanRunAdvice"></div>
+            <div class="scan-run-next" id="scanResults" hidden><p class="section-eyebrow">Co dalej?</p><div class="scan-run-summary" id="scanResultSummary"></div><div class="quick-actions"><button class="button primary" id="scanNewResults" type="button">Nowe oferty</button><button class="button secondary" id="scanPriceResults" type="button">Zmiany cen</button><button class="button secondary" id="scanReviewResults" type="button">Do weryfikacji</button><button class="button secondary" id="scanAllResults" type="button">Wszystkie z tego skanu</button><button class="button secondary" id="retryFailedScan" type="button" hidden>Ponów chwilowe błędy</button></div></div>
+          </section>
+          
+
+
+          <details class="insight-fold query-stats-fold" id="queryStats"><summary>Skuteczność fraz i profili skanu</summary><div class="panel query-stats-panel"><p class="inline-note">Które frazy i profile przynoszą książki warte uwagi. Dla każdego profilu i każdej frazy (osobno dla źródła): ile ofert przyniosła, ile z nich jest już w katalogu, ile czeka na decyzję w weryfikacji, ile było bez ISBN, ile sprzedało się w ciągu 14 dni od wykrycia, za ile (mediana) i ile ofert kosztuje ponad 50 zł. Porównanie profili pokazuje, czy zostać przy niszy, czy poszerzać zakres.</p><div id="queryStatsBody" class="query-stats" aria-live="polite"></div></div></details>
+        </section>
+        <section class="view" id="view-review" data-title="Kolejka" hidden>
+          <div class="view-heading"><div><p class="section-eyebrow">Centrum identyfikacji</p><h2>Weryfikacja książek</h2><p>Oferty bez pewnego przypisania do katalogu.</p></div><span class="state-badge warning" id="reviewCount">0 oczekujących</span></div>
+          <div class="review-toolbar"><section class="identification-progress identification-dashboard" aria-label="Automatyczna identyfikacja">
+            <div class="identification-dashboard-heading"><div><h3>Automatyczna identyfikacja</h3><span id="identificationRunState" role="status" aria-live="polite">Wczytywanie…</span></div><div class="identification-controls"><button class="button primary" type="button" id="identificationStart" disabled>Start</button><button class="button secondary" type="button" id="identificationStop" disabled>Anuluj</button></div></div>
+            <div class="identification-progress-caption"><span id="identificationProgressScope">Postęp kolejki</span><strong id="identificationProgressLabel" aria-live="polite">Wczytywanie…</strong></div>
+            <progress id="identificationProgressBar" max="100" value="0" aria-label="Postęp automatycznej identyfikacji"></progress>
+            <div class="identification-metrics">
+              <div class="identification-metric is-success"><span>Przypisane do katalogu</span><strong id="identificationAssigned">—</strong></div>
+              <div class="identification-metric"><span>Nowe wydania</span><strong id="scanIsbnCreated">—</strong></div>
+              <div class="identification-metric is-warning"><span>Do weryfikacji</span><strong id="scanIsbnReview">—</strong></div>
+              <div class="identification-metric"><span>Nie znaleziono</span><strong id="scanIsbnNotFound">—</strong></div>
+              <div class="identification-metric"><span>W kolejce</span><strong id="identificationPending">—</strong></div>
+              <div class="identification-metric is-error"><span>Błędy</span><strong id="identificationFailed">—</strong></div>
+            </div>
+            <details class="identification-more"><summary title="Szczegóły i ponawianie" aria-label="Szczegóły i ponawianie">Szczegóły i ponawianie</summary>
+              <p id="identificationProgressDetails"></p>
+              <p id="scanIsbnUpdated"></p><p>Dopasowano do istniejących wydań: <strong id="scanIsbnMatched">—</strong></p>
+                          <section class="panel settings-card"><h3>Wyniki identyfikacji</h3><p>Stan wszystkich zadań i powody zakończenia bez wpisu w katalogu.</p><div class="row"><label for="retryMode">Ponów identyfikację</label><select id="retryMode"><option value="unresolved">Wszystkie nierozstrzygnięte</option><option value="failed">Błędy</option><option value="not_found">Nieznalezione ISBN</option><option value="review_required">Wymagające weryfikacji</option></select><button id="retryIdentification" class="button secondary" type="button">Ponów wybraną grupę</button></div><p class="inline-note">Ręczne przypisania pozostaną chronione. Ponowienie może wykonać zapytania do zewnętrznych źródeł.</p><div id="identificationStats" class="settings-list" aria-live="polite"><span><small>Ładowanie statystyk…</small></span></div></section>
+              <div class="scan-isbn-reasons"><div><h5>Najczęstsze powody weryfikacji</h5><div id="scanIsbnReasons"><p>Brak danych.</p></div></div><div><h5>Błędy techniczne</h5><div id="scanIsbnFailures"><p>Brak błędów.</p></div></div></div>
+
+            </details>
+          </section>
+          <nav class="rv-tabs" id="reviewTabs" aria-label="Rodzaje ofert do weryfikacji"></nav>
+          <div class="filterbar">
+            <label class="search-field"><span class="sr-only">Szukaj ofert</span><input id="reviewSearch" type="search" placeholder="Szukaj ofert"></label></div><details class="review-menu" id="reviewMenu"><summary aria-label="Więcej: zaznaczanie, skróty, filtry, ostatnie decyzje" title="Zaznaczanie, skróty, filtry, ostatnie decyzje"><span aria-hidden="true">⋯</span> <span class="review-menu-label">Więcej</span></summary><div class="review-menu-panel"><button type="button" class="button secondary compact" id="reviewSelectToggle" aria-pressed="false">Zaznacz wiele</button><details class="shortcut-help"><summary title="Skróty klawiszowe">Skróty</summary><p class="shortcut-hint" id="reviewShortcutHint"><span><kbd>↑</kbd><kbd>↓</kbd> oferta</span><span><kbd>1</kbd>–<kbd>9</kbd> propozycja</span><span><kbd>Enter</kbd> zatwierdź</span><span><kbd>N</kbd> ta książka, wydanie nieustalone</span><span><kbd>X</kbd> odrzuć</span><span><kbd>R</kbd> odrzuć z regułą</span><span><kbd>S</kbd> pomiń</span><span><kbd>Z</kbd> zestaw</span><span><kbd>F</kbd> skupienie</span><span>Telefon: przesuń ofertę w lewo — pomiń, w prawo — poprzednia</span></p></details><details class="compact-filters"><summary>Filtry weryfikacji</summary><div class="filterbar">
+            <select id="reviewSource" aria-label="Źródło oferty"><option value="">Wszystkie źródła</option></select>
+            <select id="reviewIsbn" aria-label="Status ISBN"><option value="">Każdy status ISBN</option><option value="present">ISBN wykryty</option><option value="missing">Brak ISBN</option><option value="catalog">Pasuje do katalogu</option></select>
+            <select id="reviewSort" aria-label="Sortowanie"><option value="group" selected>Według frazy (serie)</option><option value="newest">Najnowsze</option><option value="price-desc">Najdroższe najpierw</option><option value="price">Cena rosnąco</option><option value="proposal">Najszybsze decyzje</option><option value="unlock">Odblokowują najwięcej ofert</option></select>
+          </div></details>
+          <details class="review-history"><summary title="Ostatnie decyzje i poprawianie pomyłek">Ostatnie decyzje</summary><div id="reviewDecisionHistory"></div></details></div></details></div>
+          <p id="reviewScanScope" role="status" hidden></p>
+          <section class="rv-bulk-bar" id="reviewBulkBar" hidden aria-label="Akcje dla zaznaczonych ofert"></section>
+          <div class="split-workspace">
+            <div class="review-list" id="reviewList"></div>
+            <div class="detail-panel" id="reviewDetail"><div class="empty-detail"><h3>Wybierz ofertę</h3><p>Po lewej pojawi się lista ofert wymagających decyzji.</p></div></div>
+          </div>
+        </section>
+        <section class="view" id="view-catalog" data-title="Książki" hidden>
+          <div class="view-heading"><div><p class="section-eyebrow">Identyfikacja i porównanie</p><h2>Katalog</h2><p>Dzieła, wydania i ich powiązania z ofertami.</p></div><button class="button primary" type="button" id="openCatalogForm">Dodaj książkę</button></div>
+          <p class="catalog-stats-line"><span><b id="catalogWorks">0</b> dzieł</span><span><b id="catalogEditions">0</b> wydań</span><span><b id="catalogIncomplete">0</b> do decyzji <button type="button" class="link-button" data-go-review>Weryfikuj</button></span><span class="catalog-gaps" id="catalogGaps" aria-label="Braki w katalogu"></span></p>
+          <div class="filterbar"><label class="search-field"><span class="sr-only">Szukaj w katalogu</span><input id="catalogSearch" type="search" placeholder="Szukaj: tytuł, autor, tłumacz, tytuł oryginału lub ISBN"></label><select id="catalogSort" aria-label="Sortowanie katalogu"><option value="title">Tytuł A–Z</option><option value="offers">Najwięcej ofert</option><option value="recent">Ostatnio aktualizowane</option><option value="label">Kolejność etykiety (tomy)</option></select><label class="toggle-chip"><input type="checkbox" id="catalogIncompleteOnly"><span>Tylko niekompletne</span></label><div class="segmented" role="group" aria-label="Widok katalogu"><button type="button" data-catalog-view="list" aria-pressed="true">Lista</button><button type="button" data-catalog-view="grid" aria-pressed="false">Okładki</button><button type="button" data-catalog-view="labels" aria-pressed="false">Etykiety</button></div></div>
+          <details id="catalogTools" class="catalog-tools-menu"><summary>Narzędzia katalogu <span id="catalogToolsCount"></span></summary><div class="catalog-tools"><details class="catalog-duplicates" id="catalogDuplicates"><summary>Możliwe duplikaty dzieł</summary><div id="catalogDuplicatesBody"></div></details>
+          <details class="catalog-duplicates catalog-conflicts" id="catalogConflicts"><summary>Podejrzane przypisania</summary><div id="catalogConflictsBody"></div></details>
+          <details class="catalog-duplicates catalog-names" id="catalogNames"><summary>Wydawcy i serie</summary><div id="catalogNamesBody"></div></details><details class="catalog-duplicates catalog-seeds" id="catalogSeeds"><summary>Zasilanie katalogu z Biblioteki Narodowej</summary><div id="catalogSeedsBody"></div></details><details class="catalog-duplicates catalog-removed" id="catalogRemoved"><summary>Usunięte z katalogu</summary><div id="catalogRemovedBody"></div></details>
+          </div></details><details class="catalog-duplicates catalog-filters"><summary title="Autor, etykieta, język, wydawca, rok, oprawa">Filtry katalogu</summary><div class="filterbar"><label class="field"><span>Autor</span><input id="catalogAuthor" list="authorNames" autocomplete="off" placeholder="np. Terry Pratchett"><datalist id="authorNames"></datalist></label><label class="field"><span>Etykieta</span><select id="catalogLabel"><option value="">Wszystkie</option></select></label><datalist id="labelNames"></datalist><datalist id="seriesNames"></datalist><label class="field"><span>Język</span><input id="catalogLanguage" placeholder="np. pl"></label><label class="field"><span>Wydawca</span><input id="catalogPublisher" list="publisherNames" autocomplete="off"><datalist id="publisherNames"></datalist></label><label class="field"><span>Rok</span><input id="catalogYear" type="number" min="1400" max="2100"></label><label class="field"><span>Oprawa</span><input id="catalogBinding"></label></div></details>
+          <div class="catalog-layout"><div class="panel catalog-list-panel"><div class="catalog-table-header"><span>Dzieło</span><span>Wydania</span><span>Oferty</span><span>Status</span></div><p class="catalog-order-note" id="catalogOrderNote" hidden></p><p class="sr-only" id="catalogOrderLive" role="status" aria-live="polite"></p><div id="catalogList"></div></div><div class="detail-panel catalog-detail" id="catalogDetail"><div class="empty-detail"><h3>Wybierz dzieło</h3><p>Zobaczysz jego wydania, okładki, przypisane oferty i historię obserwacji cen.</p></div></div></div>
+        </section>
+        <section class="view" id="view-sets" data-title="Kolejka" hidden>
+          <div class="view-heading sets-heading"><div><p class="section-eyebrow">Oferty wielotomowe i pakiety</p><h2>Zestawy książek</h2><p>Jedno ogłoszenie, kilka książek. Sprawdź zdjęcie i ogłoszenie, dodaj książki z katalogu, potwierdź skład.</p></div><span id="setTotal" class="state-badge neutral">0 zestawów</span></div>
+          <div class="filterbar"><label class="search-field"><span class="sr-only">Filtruj zestawy</span><input id="setFilter" type="search" placeholder="Szukaj po tytule lub źródle"></label><select id="setSort" aria-label="Kolejność zestawów"><option value="price-desc" selected>Najdroższe najpierw</option><option value="recent">Ostatnio zmienione</option></select><div class="rv-tabs" id="setTabs" role="group" aria-label="Stan zestawów"></div></div>
+          <div class="split-workspace sets-workspace">
+            <div class="review-list sets-sidebar" aria-label="Lista zestawów">
+              <div id="setList" class="sets-list" aria-live="polite"></div>
+              <details class="sets-new">
+                <summary>Utwórz zestaw z zapisanej oferty</summary>
+                <label class="field"><span>Szukaj oferty</span><input id="setOfferQuery" type="search" placeholder="Tytuł, ISBN lub źródło"></label>
+                <button class="button secondary" type="button" id="setSearchOffers">Znajdź oferty</button>
+                <label class="field"><span>Dopasowane oferty</span><select id="setOfferSelect" aria-label="Wybierz ofertę"><option value="">Najpierw wyszukaj ofertę</option></select></label>
+                <button class="button primary" type="button" id="setMarkOffer">Oznacz jako zestaw</button>
+                <p id="setFeedback" role="status" aria-live="polite"></p>
+              </details>
+            </div>
+            <div class="detail-panel sets-main" id="setDetail">
+              <div class="rv lean-review sets-summary">
+                <header class="rv-head lean-review-header">
+                  <figure class="rv-photo" id="setPhoto"></figure>
+                  <div class="rv-head-main"><p class="rv-kicker" id="setKicker"></p><h3 id="setSelectedTitle">Wybierz zestaw z listy</h3><p id="setSelectedMeta" class="sets-meta">Zawartość zestawu pojawi się tutaj.</p></div>
+                  <div class="rv-head-side"><strong class="rv-price" id="setPrice"></strong><a id="setOfferLink" href="#" target="_blank" rel="noreferrer" hidden>Ogłoszenie ↗</a></div>
+                </header>
+                <select id="setCurrent" class="sr-only" aria-label="Wybrany zestaw"></select>
+                <div class="rv-body lean-review-body">
+                  <div class="rv-work">
+                    <div class="rv-section-title"><h4>Książki w zestawie</h4><small id="setSelectedCount"></small></div>
+                    <div id="setMembers" class="sets-members" aria-live="polite"></div>
+                    <section id="setSuggestions" class="sets-suggestions" aria-live="polite"></section>
+                    <section class="sets-search-panel">
+                      <div class="rv-section-title"><h4>Dodaj inną książkę z katalogu</h4><small>tytuł, autor lub ISBN</small></div>
+                      <div class="sets-search-bar"><label class="field"><span class="sr-only">Szukaj wydań</span><input id="setEditionQuery" type="search" placeholder="Np. Horus, Eisenhorn lub ISBN"></label><button class="button secondary" type="button" id="setSearchEditions">Szukaj</button></div>
+                      <div id="setEditionResults" class="sets-results" aria-live="polite"></div>
+                    </section>
+                    <details class="sets-bulk-panel" id="setBulkPanel"><summary>Dodaj z opisu ogłoszenia albo zakres tomów</summary><label class="field"><span>Opis ogłoszenia — wklej tekst z ogłoszenia; każdy wiersz lub pozycja listy jest szukana w katalogu</span><textarea id="setDescription" rows="5" placeholder="1. Kolor magii&#10;2. Blask fantastyczny&#10;3. Równoumagicznienie"></textarea></label><div class="sets-bulk-actions"><button class="button secondary compact" type="button" id="setFromDescription">Znajdź książki z opisu</button></div><div id="setDescriptionResults" aria-live="polite"></div><div class="sets-range"><label class="field"><span>Cykl</span><input id="setCycleName" list="setCycleNames" placeholder="np. Herezja Horusa"></label><datalist id="setCycleNames"></datalist><label class="field"><span>Od tomu</span><input id="setVolumeFrom" type="number" min="1" inputmode="numeric"></label><label class="field"><span>Do tomu</span><input id="setVolumeTo" type="number" min="1" inputmode="numeric"></label><button class="button secondary compact" type="button" id="setAddRange">Dodaj tomy</button></div><p id="setRangeResult" class="inline-note" role="status"></p></details><section id="setUnknown" class="sets-unknown"></section>
+                  </div>
+                </div>
+                <footer class="rv-actions lean-review-footer sets-actions" id="setActions"></footer>
+                <div id="setTradingMount"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="view" id="view-checks" data-title="Kolejka" hidden>
+          <div class="checks-body" id="checksBody"></div>
+        </section>
+        <section class="view" id="view-offers" data-title="Oferty" hidden>
+          <div class="view-heading"><div><p class="section-eyebrow">Zebrane dane</p><h2>Oferty</h2><p>Wszystkie ogłoszenia zapisane przez skaner, ze zdjęciami i historią cen.</p></div><span class="state-badge neutral" id="offerTotal">0 ofert</span></div>
+          <div class="filterbar"><label class="search-field"><span class="sr-only">Szukaj ofert</span><input id="offerSearch" type="search" placeholder="Szukaj po tytule, ISBN lub źródle"></label><select id="offerSource" aria-label="Źródło"><option value="">Wszystkie źródła</option></select><select id="offerStatus" aria-label="Status identyfikacji"><option value="">Każdy status</option><option value="matched">Przypisane</option><option value="review">Do weryfikacji</option><option value="rejected">Odrzucone</option><option value="all">Wszystkie, także odrzucone</option></select><select id="offerAvailability" aria-label="Stan ogłoszenia"><option value="">Każdy stan ogłoszenia</option><option value="active">Aktywne</option><option value="sold">Sprzedane</option><option value="unseen">Niewidziane</option></select><select id="offerShipping" aria-label="Dostawa"><option value="">Każda dostawa</option><option value="free">Dostawa bezpłatna</option><option value="paid">Dostawa płatna</option><option value="unknown">Dostawa nieznana</option></select><p class="filter-chip" id="offerScope" hidden><span></span><button type="button" aria-label="Wyłącz ten filtr">✕</button></p></div><details class="compact-filters"><summary>Filtry i sortowanie</summary><div class="filterbar"><label class="offer-sort-label" for="offerSort">Sortuj:</label><select id="offerSort" aria-label="Sortowanie ofert"><option value="newest">Najnowsze (pierwsze wykrycie)</option><option value="oldest">Najstarsze</option><option value="price-asc">Cena: od najniższej</option><option value="price-desc">Cena: od najwyższej</option><option value="title">Tytuł A–Z</option><option value="title-desc">Tytuł Z–A</option><option value="source">Źródło A–Z</option><option value="source-desc">Źródło Z–A</option></select></div><div class="filterbar"><label class="field"><span>Skan</span><select id="offerScan"><option value="">Wszystkie skany</option></select></label><label class="field"><span>Zmiany w skanie</span><select id="offerScanChange"><option value="">Wszystkie wyniki</option><option value="new">Nowe oferty</option><option value="price">Zmiany cen</option></select></label><label class="field"><span>Cena od (zł)</span><input id="offerMinPrice" type="number" min="0" step="0.01" inputmode="decimal"></label><label class="field"><span>Cena do (zł)</span><input id="offerMaxPrice" type="number" min="0" step="0.01" inputmode="decimal"></label></div></details>
+          <div class="offer-quick-views trading-only" id="offerQuickViews" role="group" aria-label="Widoki zakupowe"><button type="button" data-purchase-view="all" aria-pressed="true">Wszystkie</button><button type="button" data-purchase-view="watched">Obserwowane</button><button type="button" data-purchase-view="target">Próg osiągnięty</button><button type="button" data-purchase-view="check">Do sprawdzenia</button><button type="button" data-purchase-view="negotiating">Negocjowane</button><button type="button" data-purchase-view="bought">Kupione</button><button type="button" data-purchase-view="rejected">Odrzucone</button></div>
+
+          <div class="panel offers-panel"><div id="offersMobileList" class="offers-mobile-list" aria-label="Oferty — widok mobilny"></div><div class="table-wrap offers-table-wrap"><table class="offers-table"><thead><tr><th><button type="button" class="offer-sort-header" data-offer-sort="title" data-offer-sort-reverse="title-desc">Tytuł <span aria-hidden="true" class="offer-sort-arrow"></span></button></th><th><button type="button" class="offer-sort-header" data-offer-sort="source" data-offer-sort-reverse="source-desc">Źródło <span aria-hidden="true" class="offer-sort-arrow"></span></button></th><th class="offer-price-cell"><button type="button" class="offer-sort-header" data-offer-sort="price-asc" data-offer-sort-reverse="price-desc">Cena <span aria-hidden="true" class="offer-sort-arrow"></span></button></th><th>ISBN</th><th>Przypisanie</th><th>Katalog · ogłoszenie</th><th><button type="button" class="offer-sort-header" data-offer-sort="newest" data-offer-sort-reverse="oldest">Wykryta <span aria-hidden="true" class="offer-sort-arrow"></span></button></th></tr></thead><tbody id="offersTableBody"></tbody></table></div><div class="pagination"><button class="button secondary compact" id="offerPrev" type="button">Poprzednia</button><span id="offerPageLabel">Strona 1</span><button class="button secondary compact" id="offerNext" type="button">Następna</button></div></div>
+
+        </section>
+        <section class="view" id="view-settings" data-title="Ustawienia" hidden>
+          <div class="view-heading"><div><p class="section-eyebrow">Konfiguracja</p><h2>Ustawienia i diagnostyka</h2><p>Stan lokalnych integracji bez ujawniania sekretów.</p></div></div>
+          <section class="panel" id="interfaceSettings"><h3>Interfejs</h3><div class="pref-list"><label class="pref"><input type="checkbox" id="prefTradingMode"><span><b>Tryb handlu</b><small>Pokazuje statusy zakupu, obserwowane oferty, ceny docelowe i koszty. Wyłączony, dopóki zbierasz dane.</small></span></label><label class="pref"><span><b>Motyw</b><small>Jasny, ciemny albo zgodny z systemem.</small></span><select id="prefTheme"><option value="">Systemowy</option><option value="light">Jasny</option><option value="dark">Ciemny</option></select></label><label class="pref"><span><b>Gęstość list</b><small>Więcej pozycji na ekranie albo więcej oddechu.</small></span><select id="prefDensity"><option value="">Wygodna</option><option value="compact">Zwarta</option></select></label></div><p class="inline-note">Skróty: <kbd>Ctrl</kbd>+<kbd>K</kbd> paleta poleceń · klawisze weryfikacji są opisane nad listą ofert.</p></section><section class="panel" id="rulesSettings"><h3>Reguły odrzucania</h3><p>Oferty odrzucane automatycznie: od sprzedawcy, z frazą w tytule albo powyżej / poniżej ceny. Każde takie odrzucenie widać w „Ostatnich decyzjach” kolejki i można je cofnąć.</p><div id="rejectionRules"><p class="inline-note">Wczytywanie…</p></div></section><section class="panel" id="dataSettings"><h3>Dane i kopie zapasowe</h3><p id="dataLocation">Wczytywanie lokalizacji…</p><p id="lastBackup">Sprawdzanie kopii…</p><button class="button primary" id="createBackup" type="button">Utwórz kopię zapasową</button><div class="data-tools" id="dataTools"><button class="button secondary" id="verifyBackup" type="button">Sprawdź ostatnią kopię</button><a class="button secondary" id="exportDeals" href="/api/export/deals.csv" download>Pobierz CSV okazji</a><a class="button secondary" id="exportPhrases" href="/api/export/phrases.csv" download>Pobierz CSV fraz</a></div><p id="backupResult" role="status"></p><p id="verifyResult" role="status"></p><details><summary>Jak odzyskać dane?</summary><p>Zamknij aplikację. Użyj polecenia npm run restore opisanego w README, aby odtworzyć kopię do nowego pliku. Uruchom aplikację z BOOKFLIP_CATALOG_DB wskazującym odzyskany plik i sprawdź dane. Nie podmieniaj otwartej bazy. Kopię trzymaj także na innym dysku.</p></details></section><section class="panel trading-only" id="tradingDefaults"><h3>Domyślne koszty zakupu</h3><p>Wartości w złotych; puste pole oznacza brak założenia. Możesz zmienić je osobno dla każdej oferty.</p><div id="defaultCostFields"></div><button class="button secondary" id="saveTradingDefaults" type="button">Zapisz domyślne koszty</button><p id="defaultsResult" role="status"></p></section><details class="panel" id="legacyImports"><summary>Import danych ze starszej wersji</summary><div id="legacyImportActions"></div></details>
+          <div class="settings-grid">
+            <section class="panel settings-card"><h3>Źródła skanowania</h3><p>Dostępność w programie i wynik ostatnich prób pobrania.</p><div id="settingsSources" class="settings-list"></div></section>
+            <details class="panel settings-card"><summary>Zaawansowane: stan magazynu</summary><p id="settingsDatabaseCopy">Sprawdzanie połączenia...</p><div id="settingsDatabaseStats" class="settings-list"></div></details>
+            <details class="panel settings-card"><summary>Zaawansowane: BN i Open Library</summary><p>Resolver korzysta z cache, limitów czasu i osobnych limitów zapytań.</p><div class="settings-list"><span><b>Cache pozytywny</b><small>30 dni</small></span><span><b>Cache braku wyniku</b><small>7 dni</small></span><span><b>Limit domyślny</b><small>1 zapytanie / sekundę / źródło</small></span></div></details>
+
+            <details class="panel settings-card"><summary>Informacje o aplikacji</summary><div class="settings-list"><span><b>Wersja</b><small>BookFlip 3.2 local</small></span><span><b>Adres</b><small>127.0.0.1</small></span><span><b>Magazyn ofert</b><small>SQLite</small></span></div></details>
+          </div>
+
+          <details class="scan-advanced panel" id="scanInsightsFold"><summary>Centrum skanowania: zdarzenia i diagnostyka ostatniego skanu</summary>
+          <section class="panel scan-insights" aria-label="Centrum diagnostyki skanowania">
+            <div class="panel-heading"><div><h3>Centrum skanowania</h3><p>Postęp i diagnostyka źródeł — aktualizowane na żywo w czasie skanu.</p></div><span id="scanInsightsState" class="state-badge neutral">Oczekiwanie</span></div>
+            <div class="scan-insights-metrics">
+              <div><span>Zadania</span><strong id="scanInsightsTasks">0 / 0</strong></div>
+              <div><span>Oferty</span><strong id="scanInsightsOffers">0</strong></div>
+              <div><span>Ponowienia</span><strong id="scanInsightsRetries">0</strong></div>
+              <div><span>Błędy</span><strong id="scanInsightsErrors">0</strong></div>
+            </div>
+            <div class="scan-center-current" aria-live="polite"><div><span>Aktualne zadanie</span><strong id="scanInsightsCurrent">Brak aktywnego zadania</strong></div><div><span>Tempo</span><strong id="scanInsightsRate">—</strong></div><div><span>Szacowany pozostały czas</span><strong id="scanInsightsEta">—</strong></div><div><span>Czas skanu</span><strong id="scanInsightsElapsed">—</strong></div></div>
+            <p id="scanInsightsNotice" class="scan-center-notice" role="status"></p>
+            <div class="scan-insights-progress"><div><strong>Postęp zadań</strong><span id="scanInsightsPercent">—</span></div><progress id="scanInsightsBar" max="100" value="0" aria-label="Postęp skanowania"></progress></div>
+            <div class="scan-insights-columns">
+              <section><h4>Źródła</h4><div id="scanInsightsSources" class="scan-insights-list"><p>Uruchom skan, aby zobaczyć źródła.</p></div></section>
+              <section><h4>Ostatnie zdarzenia</h4><div id="scanInsightsEvents" class="scan-insights-events" aria-live="off"><p>Brak zdarzeń.</p></div></section>
+            </div>
+          </section>
+          
+</details>
+          <div class="panel diagnostic-panel"><div class="panel-heading"><div><h3>Diagnostyka</h3><p>Testuje tylko lokalne endpointy. Nie uruchamia skanerów ani zewnętrznych API.</p></div><button class="button secondary" id="runDiagnostics" type="button">Uruchom diagnostykę</button></div><div id="diagnosticResults" class="diagnostic-results"></div></div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+          <aside class="drawer" id="offerDrawer" hidden role="dialog" aria-modal="true" tabindex="-1" aria-label="Szczegóły oferty"><button class="drawer-close" id="closeOfferDrawer" type="button">Zamknij</button><div id="offerDrawerContent"></div></aside>
+  <dialog id="commandPalette" class="palette" aria-label="Paleta poleceń"><form method="dialog" class="palette-form"><input id="paletteInput" type="search" autocomplete="off" placeholder="Przejdź do widoku, oferty, dzieła albo wpisz ISBN…" aria-controls="paletteResults"><div id="paletteResults" class="palette-results" role="listbox"></div><p class="palette-hint"><kbd>↑</kbd><kbd>↓</kbd> wybór · <kbd>Enter</kbd> otwórz · <kbd>Esc</kbd> zamknij</p></form></dialog>
+  <dialog id="catalogDialog" class="modal">
+    <form id="catalogForm">
+      <div class="modal-heading"><div><p class="topbar-kicker">Nowy rekord</p><h2>Dodaj książkę</h2></div><button class="drawer-close" type="button" id="closeCatalogForm">Zamknij</button></div>
+      <div class="mode-tabs"><button type="button" class="mode-tab active" data-catalog-mode="isbn">Przez ISBN</button><button type="button" class="mode-tab" data-catalog-mode="manual">Ręcznie</button></div>
+      <div id="catalogIsbnMode"><label class="field"><span>ISBN-10 lub ISBN-13</span><input id="catalogIsbn" inputmode="numeric" placeholder="978..." maxlength="20"><small>Najpierw zobaczysz wynik lokalny oraz metadane BN/OL. Rekord powstanie dopiero po drugim, świadomym zatwierdzeniu.</small></label></div>
+      <div id="catalogManualMode" hidden><label class="field"><span>Tytuł dzieła</span><input id="catalogTitle" maxlength="500" placeholder="Pełny tytuł"></label><label class="field"><span>ISBN (opcjonalnie)</span><input id="catalogManualIsbn" inputmode="numeric" maxlength="20" placeholder="978..."></label></div>
+      <p class="inline-alert" id="catalogFormMessage" hidden></p>
+      <div class="modal-actions"><button type="button" class="button secondary" id="cancelCatalogForm">Anuluj</button><button type="submit" class="button primary" id="catalogSubmit">Zapisz rekord</button></div>
+    </form>
+  </dialog>
+  <nav class="mobile-bottom-nav" aria-label="Nawigacja mobilna">
+    <button class="mobile-nav-item active" data-view="today" aria-current="page" type="button"><span class="mobile-nav-icon" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-today"/></svg></span><span>Dziś</span></button>
+    <button class="mobile-nav-item" data-view="deals" type="button"><span class="mobile-nav-icon" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-deals"/></svg></span><span>Okazje</span></button>
+    <button class="mobile-nav-item" data-view="hunter" type="button"><span class="mobile-nav-icon" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-hunter"/></svg></span><span>Łowca</span></button>
+    <button class="mobile-nav-item" data-view="queue" type="button"><span class="mobile-nav-icon" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-queue"/></svg></span><span>Kolejka</span></button>
+    <button class="mobile-nav-item" data-more type="button" aria-haspopup="true" aria-expanded="false" aria-controls="mobileMore"><span class="mobile-nav-icon" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-more"/></svg></span><span>Więcej</span></button>
+  </nav>
+  <div class="mobile-more" id="mobileMore" role="group" aria-label="Więcej widoków" hidden>
+    <button class="mobile-more-item" data-view="catalog" type="button"><span class="mobile-nav-icon" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-books"/></svg></span><span>Książki</span></button>
+    <button class="mobile-more-item" data-view="scanner" type="button"><span class="mobile-nav-icon" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-sources"/></svg></span><span>Skan</span></button>
+    <button class="mobile-more-item" data-view="settings" type="button"><span class="mobile-nav-icon" aria-hidden="true"><svg class="ui-icon" width="22" height="22" focusable="false" aria-hidden="true"><use href="#i-settings"/></svg></span><span>Ustawienia</span></button>
+  </div>
+  <div class="toast-region" id="toastRegion" aria-live="polite"></div>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
